@@ -66,4 +66,4 @@ Open an issue or reach out to the maintainer.
 
 ---
 
-*"Cooper, this is no time for caution."* - T.A.R.S
+*"Developer, this is no time for caution."* - T.A.R.S

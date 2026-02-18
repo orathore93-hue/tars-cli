@@ -31,7 +31,7 @@ Designed for 3 AM incidents when you need answers fast, not more data to parse.
 
 Other tools: "Pod xyz-123 has status CrashLoopBackOff"
 
-T.A.R.S: "Cooper, your pod is having an existential crisis. It's CrashLooping because it can't find its database. Check your secrets. Humor setting: 90%."
+T.A.R.S: "Developer, your pod is having an existential crisis. It's CrashLooping because it can't find its database. Check your secrets. Humor setting: 90%."
 
 ## 🚀 Future Vision
 
@@ -54,4 +54,4 @@ T.A.R.S: "Cooper, your pod is having an existential crisis. It's CrashLooping be
 
 ---
 
-*"Cooper, this is no time for caution."* - T.A.R.S
+*"Developer, this is no time for caution."* - T.A.R.S

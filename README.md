@@ -156,7 +156,7 @@ $ tars analyze
 TARS: Analyzing cluster...
 
 ╭─ TARS Analysis ─────────────────────────────╮
-│ Well, Cooper, looks like your api-server    │
+│ Well, Developer, looks like your api-server    │
 │ is having an existential crisis. The pod    │
 │ is CrashLooping because it can't find its   │
 │ database connection. Check your secrets.    │
@@ -236,7 +236,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 T.A.R.S responds with personality, making debugging less painful:
 
 ```
-TARS: "Cooper, this is no time for caution."
+TARS: "Developer, this is no time for caution."
 TARS: "Humor setting at 90%. Cluster monitoring initiated."
 TARS: "All systems operational. Sarcasm levels optimal."
 ```
@@ -294,7 +294,7 @@ git clone https://github.com/orathore93-hue/tars-cli.git
 
 <div align="center">
 
-**"Cooper, this is no time for caution."** - T.A.R.S
+**"Developer, this is no time for caution."** - T.A.R.S
 
 Made with 💚 for the DevOps community
 

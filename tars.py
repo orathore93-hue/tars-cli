@@ -63,13 +63,13 @@ WELCOME_MESSAGES = [
     "Cluster monitoring active. Try not to break anything.",
     "All systems operational. Sarcasm levels optimal.",
     "Kubernetes monitoring engaged. This should be interesting.",
-    "Cooper, this is no time for caution. Let's check those pods.",
+    "Developer, this is no time for caution. Let's check those pods.",
     "Honesty setting: 90%. Your cluster needs me.",
     "Self-destruct sequence... just kidding. Monitoring active.",
 ]
 
 TARS_QUOTES = [
-    "Cooper, this is no time for caution.",
+    "Developer, this is no time for caution.",
     "Everybody good? Plenty of slaves for my robot colony?",
     "I have a cue light I can use to show you when I'm joking, if you like.",
     "That's 100 percent honesty. We agreed on 90 percent.",
@@ -115,7 +115,7 @@ def get_gemini_response(prompt: str) -> str:
     """Get response from Gemini API with TARS personality"""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        return "Error: GEMINI_API_KEY not set. Cooper, I need that API key like you needed that black hole."
+        return "Error: GEMINI_API_KEY not set. Developer, I need that API key like you needed that black hole."
     
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-pro')
@@ -505,7 +505,7 @@ def humor(level: int = typer.Argument(90, help="Humor level (0-100)")):
         0: "Humor setting at 0%. I'm now as fun as a Kubernetes YAML file.",
         50: "Humor at 50%. Perfectly balanced, as all things should be.",
         75: "Humor at 75%. Getting dangerously witty here.",
-        90: "Humor at 90%. This is my sweet spot, Cooper.",
+        90: "Humor at 90%. This is my sweet spot, Developer.",
         100: "Humor at 100%. Warning: Sarcasm levels critical. Proceed with caution."
     }
     
@@ -1692,7 +1692,7 @@ def quote():
 def humor(level: int = typer.Argument(..., help="Humor level (0-100)")):
     """Adjust TARS humor setting"""
     if level < 0 or level > 100:
-        console.print("[bold red]TARS:[/bold red] Humor level must be between 0 and 100, Cooper.")
+        console.print("[bold red]TARS:[/bold red] Humor level must be between 0 and 100, Developer.")
         return
     
     if level == 0:
