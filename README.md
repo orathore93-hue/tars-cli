@@ -29,9 +29,14 @@ AI-powered Kubernetes cluster monitoring and troubleshooting tool for on-call en
 pip install tars-cli
 ```
 
+### From GitHub
+```bash
+pip install git+https://github.com/orathore93-hue/tars-cli.git
+```
+
 ### From Source
 ```bash
-git clone https://github.com/YOUR_USERNAME/tars-cli.git
+git clone https://github.com/orathore93-hue/tars-cli.git
 cd tars-cli
 pip install -e .
 ```

@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tars-cli"
+version = "0.1.0"
+description = "AI-powered Kubernetes cluster monitoring and troubleshooting tool"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Omer Rathore", email = "orathore93@gmail.com"}
+]
+keywords = ["kubernetes", "monitoring", "ai", "devops", "k8s", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+    "typer",
+    "rich",
+    "kubernetes",
+    "google-generativeai",
+]
+
+[project.urls]
+Homepage = "https://github.com/orathore93-hue/tars-cli"
+Repository = "https://github.com/orathore93-hue/tars-cli"
+Issues = "https://github.com/orathore93-hue/tars-cli/issues"
+
+[project.scripts]
+tars = "tars:app"
+
+[tool.setuptools]
+py-modules = ["tars"]
