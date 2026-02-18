@@ -256,14 +256,30 @@ tars logs my-failing-pod --namespace default
 
 We love contributions! T.A.R.S is built by developers, for developers.
 
-**Ways to contribute:**
-- 🐛 Report bugs
-- 💡 Suggest features
-- 🔧 Submit PRs
-- 📖 Improve docs
-- ⭐ Star the repo
+### 🌟 How You Can Help
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- 🐛 **Report bugs** - Found an issue? Let us know!
+- 💡 **Suggest features** - Have ideas? We want to hear them!
+- 🔧 **Submit PRs** - Code contributions welcome!
+- 📖 **Improve docs** - Help others understand T.A.R.S
+- ⭐ **Star the repo** - Show your support!
+- 📢 **Spread the word** - Share with your network
+
+### 🎯 Good First Issues
+
+New to the project? Look for issues labeled [`good first issue`](https://github.com/orathore93-hue/tars-cli/labels/good%20first%20issue)
+
+### 📚 Contributing Guide
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### 🏆 Contributors
+
+Thanks to all our contributors! 🙏
+
+<a href="https://github.com/orathore93-hue/tars-cli/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=orathore93-hue/tars-cli" />
+</a>
 
 ---
 
