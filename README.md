@@ -201,6 +201,7 @@ TARS: Analyzing cluster...
 | `tars chaos` | Chaos engineering insights | Find weak points before they break |
 | `tars compare` | Compare namespaces | Visual bar charts of resource usage |
 | `tars timeline` | Events timeline | Last 30 minutes in chronological order |
+| `tars context` | Smart context switching | Instant metrics + bottleneck detection on switch |
 
 ### 📊 Standard Monitoring
 
