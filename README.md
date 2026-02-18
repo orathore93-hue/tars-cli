@@ -285,6 +285,20 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 If T.A.R.S helped you debug at 3 AM, give it a ⭐!
 
+### 💚 Support Development
+
+T.A.R.S is free and open source. If you find it useful, consider supporting its development:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/omerrathore)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-pink?style=for-the-badge&logo=github)](https://github.com/sponsors/orathore93-hue)
+
+Your support helps:
+- 🚀 Add new features
+- 🐛 Fix bugs faster
+- 📚 Improve documentation
+- ☁️ Cover API costs
+- ⏰ Dedicate more time to the project
+
 ```bash
 # Share with your team
 git clone https://github.com/orathore93-hue/tars-cli.git
