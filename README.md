@@ -312,8 +312,16 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 👨‍💻 Author
 
 **Omer Rathore**
-- GitHub: [@orathore93-hue](https://github.com/orathore93-hue)
-- Project: [T.A.R.S](https://github.com/orathore93-hue/tars-cli)
+- 📧 Email: [orathore93@gmail.com](mailto:orathore93@gmail.com)
+- 💼 LinkedIn: [linkedin.com/in/omerrathore](https://linkedin.com/in/omerrathore)
+- 🐙 GitHub: [@orathore93-hue](https://github.com/orathore93-hue)
+- 🚀 Project: [T.A.R.S](https://github.com/orathore93-hue/tars-cli)
+
+**Get in touch for:**
+- 🤝 Collaboration opportunities
+- 💡 Feature requests
+- 🐛 Bug reports
+- 📢 Feedback and suggestions
 
 ---
 

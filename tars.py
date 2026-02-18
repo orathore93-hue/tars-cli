@@ -1066,15 +1066,20 @@ def creator():
 ║     [dim]Technical Assistance & Reliability System[/dim]      ║
 ║                                                       ║
 ║  Created by: [bold yellow]Omer Rathore[/bold yellow]                          ║
-║  GitHub: [bold blue]@orathore93-hue[/bold blue]                            ║
+║                                                       ║
+║  📧 Email:    [bold blue]orathore93@gmail.com[/bold blue]                ║
+║  💼 LinkedIn: [bold blue]linkedin.com/in/omerrathore[/bold blue]        ║
+║  🐙 GitHub:   [bold blue]@orathore93-hue[/bold blue]                      ║
 ║                                                       ║
 ║  [dim]"An AI-powered Kubernetes monitoring tool with[/dim]    ║
 ║  [dim]90% humor setting and 100% functionality."[/dim]        ║
 ║                                                       ║
+║  [bold green]Open for collaboration & feedback![/bold green]            ║
+║                                                       ║
 ╚═══════════════════════════════════════════════════════╝[/bold cyan]
     """
     console.print(creator_info)
-    console.print("\n[bold green]TARS:[/bold cyan] [italic]Yes, I was built by a human. Surprising, I know.[/italic]\n")
+    console.print("\n[bold green]TARS:[/bold green] [italic]Yes, I was built by a human. Surprising, I know.[/italic]\n")
 
 @app.command()
 def restart(pod_name: str, namespace: str = typer.Option("default", help="Namespace")):
