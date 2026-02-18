@@ -15,7 +15,7 @@ import sys
 console = Console()
 app = typer.Typer(
     help="T.A.R.S. - Technical Assistance & Reliability System for Kubernetes",
-    add_completion=False,
+    add_completion=True,
     no_args_is_help=False
 )
 

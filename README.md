@@ -97,6 +97,27 @@ pip install git+https://github.com/orathore93-hue/tars-cli.git
 
 **That's it.** No complex setup, no YAML hell, no configuration files.
 
+### 🎯 Enable Autocompletion (Optional)
+
+**Bash:**
+```bash
+tars --install-completion bash
+source ~/.bashrc
+```
+
+**Zsh:**
+```bash
+tars --install-completion zsh
+source ~/.zshrc
+```
+
+**Fish:**
+```bash
+tars --install-completion fish
+```
+
+Now you can press `Tab` to autocomplete TARS commands!
+
 ---
 
 ## ⚡ Quick Start
