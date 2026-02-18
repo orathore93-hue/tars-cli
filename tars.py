@@ -2289,6 +2289,225 @@ def story():
         console.print(f"[bold red]✗[/bold red] Error: {e}")
 
 @app.command()
+def slo():
+    """Monitor Service Level Objectives (SLOs) - SRE metrics"""
+    try:
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        apps_v1 = client.AppsV1Api()
+        
+        console.print("[bold green]TARS:[/bold green] Calculating SLO metrics...\n")
+        
+        # Get all pods and deployments
+        all_pods = v1.list_pod_for_all_namespaces()
+        deployments = apps_v1.list_deployment_for_all_namespaces()
+        
+        # Calculate SLIs (Service Level Indicators)
+        total_pods = len(all_pods.items)
+        running_pods = sum(1 for p in all_pods.items if p.status.phase == "Running")
+        ready_pods = sum(1 for p in all_pods.items 
+                        if p.status.conditions and 
+                        any(c.type == "Ready" and c.status == "True" for c in p.status.conditions))
+        
+        # Availability SLI
+        availability = (running_pods / total_pods * 100) if total_pods > 0 else 0
+        
+        # Readiness SLI
+        readiness = (ready_pods / total_pods * 100) if total_pods > 0 else 0
+        
+        # Deployment health SLI
+        healthy_deployments = sum(1 for d in deployments.items 
+                                  if d.status.ready_replicas == d.spec.replicas)
+        deployment_health = (healthy_deployments / len(deployments.items) * 100) if len(deployments.items) > 0 else 0
+        
+        # Error budget calculation (assuming 99.9% SLO)
+        slo_target = 99.9
+        error_budget = 100 - slo_target  # 0.1%
+        current_errors = 100 - availability
+        error_budget_remaining = error_budget - current_errors
+        error_budget_pct = (error_budget_remaining / error_budget * 100) if error_budget > 0 else 0
+        
+        # Display SLO Dashboard
+        table = Table(title="SLO Dashboard", show_header=True)
+        table.add_column("Metric", style="cyan", width=30)
+        table.add_column("Current", justify="right", width=15)
+        table.add_column("Target", justify="right", width=15)
+        table.add_column("Status", justify="center", width=10)
+        
+        # Availability
+        avail_status = "✓" if availability >= slo_target else "✗"
+        avail_color = "green" if availability >= slo_target else "red"
+        table.add_row(
+            "Availability (Running Pods)",
+            f"[{avail_color}]{availability:.2f}%[/{avail_color}]",
+            f"{slo_target}%",
+            f"[{avail_color}]{avail_status}[/{avail_color}]"
+        )
+        
+        # Readiness
+        ready_status = "✓" if readiness >= slo_target else "✗"
+        ready_color = "green" if readiness >= slo_target else "red"
+        table.add_row(
+            "Readiness (Ready Pods)",
+            f"[{ready_color}]{readiness:.2f}%[/{ready_color}]",
+            f"{slo_target}%",
+            f"[{ready_color}]{ready_status}[/{ready_color}]"
+        )
+        
+        # Deployment Health
+        deploy_status = "✓" if deployment_health >= 95 else "✗"
+        deploy_color = "green" if deployment_health >= 95 else "yellow" if deployment_health >= 90 else "red"
+        table.add_row(
+            "Deployment Health",
+            f"[{deploy_color}]{deployment_health:.2f}%[/{deploy_color}]",
+            "95%",
+            f"[{deploy_color}]{deploy_status}[/{deploy_color}]"
+        )
+        
+        console.print(table)
+        console.print()
+        
+        # Error Budget
+        budget_color = "green" if error_budget_pct > 50 else "yellow" if error_budget_pct > 20 else "red"
+        console.print(f"[bold cyan]Error Budget:[/bold cyan] [{budget_color}]{error_budget_pct:.1f}% remaining[/{budget_color}]")
+        
+        if error_budget_pct < 20:
+            console.print(f"[bold red]⚠️  Warning:[/bold red] Error budget critically low! Freeze deployments.")
+        elif error_budget_pct < 50:
+            console.print(f"[bold yellow]⚠️  Caution:[/bold yellow] Error budget running low. Be careful with changes.")
+        else:
+            console.print(f"[bold green]✓[/bold green] Error budget healthy. Safe to deploy.")
+        
+        console.print()
+        
+        # SLI Details
+        console.print("[bold cyan]📊 SLI Breakdown:[/bold cyan]\n")
+        console.print(f"  Total Pods: {total_pods}")
+        console.print(f"  Running: [green]{running_pods}[/green]")
+        console.print(f"  Ready: [green]{ready_pods}[/green]")
+        console.print(f"  Deployments: {len(deployments.items)} total, [green]{healthy_deployments}[/green] healthy")
+        console.print()
+        
+        # Recommendations
+        if availability < slo_target:
+            console.print("[bold yellow]💡 Recommendations:[/bold yellow]")
+            console.print("  • Investigate non-running pods: tars errors")
+            console.print("  • Check for resource constraints: tars pending")
+            console.print("  • Review recent changes: tars timeline")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def sli():
+    """Show Service Level Indicators (SLIs) - detailed metrics"""
+    try:
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        
+        console.print("[bold green]TARS:[/bold green] Gathering Service Level Indicators...\n")
+        
+        # Get events for error rate
+        events = v1.list_event_for_all_namespaces()
+        from datetime import timedelta
+        now = datetime.now(events.items[0].last_timestamp.tzinfo) if events.items else datetime.now()
+        last_hour = [e for e in events.items if e.last_timestamp and (now - e.last_timestamp) < timedelta(hours=1)]
+        
+        warnings = [e for e in last_hour if e.type == "Warning"]
+        error_rate = (len(warnings) / len(last_hour) * 100) if len(last_hour) > 0 else 0
+        
+        # Get pods for latency proxy (restart count)
+        all_pods = v1.list_pod_for_all_namespaces()
+        total_restarts = 0
+        for pod in all_pods.items:
+            if pod.status.container_statuses:
+                total_restarts += sum(c.restart_count for c in pod.status.container_statuses)
+        
+        avg_restarts = total_restarts / len(all_pods.items) if len(all_pods.items) > 0 else 0
+        
+        # Calculate uptime (pods running vs total)
+        running = sum(1 for p in all_pods.items if p.status.phase == "Running")
+        uptime = (running / len(all_pods.items) * 100) if len(all_pods.items) > 0 else 0
+        
+        # Get nodes for infrastructure health
+        nodes = v1.list_node()
+        ready_nodes = sum(1 for n in nodes.items 
+                         if any(c.type == "Ready" and c.status == "True" for c in n.status.conditions))
+        node_health = (ready_nodes / len(nodes.items) * 100) if len(nodes.items) > 0 else 0
+        
+        # Display SLI Table
+        table = Table(title="Service Level Indicators (SLIs)", show_header=True)
+        table.add_column("SLI", style="cyan", width=25)
+        table.add_column("Value", justify="right", width=15)
+        table.add_column("Target", justify="right", width=15)
+        table.add_column("Status", justify="center", width=10)
+        
+        # Uptime
+        uptime_color = "green" if uptime >= 99.9 else "yellow" if uptime >= 99 else "red"
+        uptime_status = "✓" if uptime >= 99.9 else "⚠" if uptime >= 99 else "✗"
+        table.add_row(
+            "Uptime",
+            f"[{uptime_color}]{uptime:.3f}%[/{uptime_color}]",
+            "99.9%",
+            f"[{uptime_color}]{uptime_status}[/{uptime_color}]"
+        )
+        
+        # Error Rate
+        error_color = "green" if error_rate < 1 else "yellow" if error_rate < 5 else "red"
+        error_status = "✓" if error_rate < 1 else "⚠" if error_rate < 5 else "✗"
+        table.add_row(
+            "Error Rate (last hour)",
+            f"[{error_color}]{error_rate:.2f}%[/{error_color}]",
+            "< 1%",
+            f"[{error_color}]{error_status}[/{error_color}]"
+        )
+        
+        # Restart Rate
+        restart_color = "green" if avg_restarts < 1 else "yellow" if avg_restarts < 3 else "red"
+        restart_status = "✓" if avg_restarts < 1 else "⚠" if avg_restarts < 3 else "✗"
+        table.add_row(
+            "Avg Restarts per Pod",
+            f"[{restart_color}]{avg_restarts:.2f}[/{restart_color}]",
+            "< 1",
+            f"[{restart_color}]{restart_status}[/{restart_color}]"
+        )
+        
+        # Node Health
+        node_color = "green" if node_health == 100 else "yellow" if node_health >= 90 else "red"
+        node_status = "✓" if node_health == 100 else "⚠" if node_health >= 90 else "✗"
+        table.add_row(
+            "Node Health",
+            f"[{node_color}]{node_health:.1f}%[/{node_color}]",
+            "100%",
+            f"[{node_color}]{node_status}[/{node_color}]"
+        )
+        
+        console.print(table)
+        console.print()
+        
+        # Summary
+        all_good = uptime >= 99.9 and error_rate < 1 and avg_restarts < 1 and node_health == 100
+        
+        if all_good:
+            console.print("[bold green]✓ All SLIs within target! System is healthy.[/bold green]\n")
+        else:
+            console.print("[bold yellow]⚠️  Some SLIs need attention:[/bold yellow]\n")
+            if uptime < 99.9:
+                console.print("  • Uptime below target - check pod health")
+            if error_rate >= 1:
+                console.print("  • High error rate - review recent events")
+            if avg_restarts >= 1:
+                console.print("  • Pods restarting frequently - investigate crashes")
+            if node_health < 100:
+                console.print("  • Node issues detected - check node status")
+            console.print()
+        
+        console.print("[dim]Run 'tars slo' for SLO dashboard with error budget[/dim]\n")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
 def version():
     """Show T.A.R.S version"""
     console.print("\n[bold cyan]T.A.R.S v0.1.0[/bold cyan]")

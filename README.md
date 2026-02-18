@@ -202,6 +202,8 @@ TARS: Analyzing cluster...
 | `tars compare` | Compare namespaces | Visual bar charts of resource usage |
 | `tars timeline` | Events timeline | Last 30 minutes in chronological order |
 | `tars context` | Smart context switching | Instant metrics + bottleneck detection on switch |
+| `tars slo` | SLO monitoring | Error budget tracking for SRE teams |
+| `tars sli` | SLI dashboard | Service Level Indicators with targets |
 
 ### 📊 Standard Monitoring
 
