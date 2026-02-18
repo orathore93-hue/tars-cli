@@ -1607,7 +1607,7 @@ def describe(resource: str, name: str, namespace: str = typer.Option("default", 
 
 @app.command()
 def context():
-    """Show and switch Kubernetes contexts"""
+    """Show and switch Kubernetes contexts with instant health check"""
     try:
         config.load_kube_config()
         
@@ -1615,13 +1615,129 @@ def context():
         os.system("kubectl config get-contexts")
         
         console.print("\n[bold cyan]Current Context:[/bold cyan]")
-        os.system("kubectl config current-context")
+        current = os.popen("kubectl config current-context").read().strip()
+        console.print(current)
         
         switch = typer.confirm("\nSwitch context?")
         if switch:
             context_name = typer.prompt("Enter context name")
             os.system(f"kubectl config use-context {context_name}")
-            console.print(f"[bold green]✓[/bold green] Switched to {context_name}")
+            console.print(f"[bold green]✓[/bold green] Switched to {context_name}\n")
+            
+            # Instant health check and insights
+            console.print("[bold green]TARS:[/bold green] Analyzing new cluster...\n")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold cyan]Gathering metrics...[/bold cyan]"),
+                console=console
+            ) as progress:
+                progress.add_task("analyze", total=None)
+                time.sleep(1)
+            
+            console.print()
+            
+            # Reload config for new context
+            config.load_kube_config()
+            v1 = client.CoreV1Api()
+            apps_v1 = client.AppsV1Api()
+            
+            # Gather metrics
+            nodes = v1.list_node()
+            all_pods = v1.list_pod_for_all_namespaces()
+            deployments = apps_v1.list_deployment_for_all_namespaces()
+            namespaces = v1.list_namespace()
+            
+            running_pods = sum(1 for p in all_pods.items if p.status.phase == "Running")
+            failed_pods = sum(1 for p in all_pods.items if p.status.phase == "Failed")
+            pending_pods = sum(1 for p in all_pods.items if p.status.phase == "Pending")
+            
+            # Display quick metrics
+            table = Table(title="Cluster Overview", show_header=False)
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="white")
+            
+            table.add_row("Nodes", f"{len(nodes.items)}")
+            table.add_row("Namespaces", f"{len(namespaces.items)}")
+            table.add_row("Deployments", f"{len(deployments.items)}")
+            table.add_row("Pods Running", f"[green]{running_pods}[/green]")
+            table.add_row("Pods Failed", f"[red]{failed_pods}[/red]" if failed_pods > 0 else "0")
+            table.add_row("Pods Pending", f"[yellow]{pending_pods}[/yellow]" if pending_pods > 0 else "0")
+            
+            console.print(table)
+            console.print()
+            
+            # TARS Observations
+            observations = []
+            
+            # Check for bottlenecks
+            if len(nodes.items) < 3:
+                observations.append({
+                    "type": "⚠️  Bottleneck",
+                    "issue": f"Only {len(nodes.items)} node(s) - limited scalability",
+                    "color": "yellow"
+                })
+            
+            # Check for misconfigurations
+            single_replica = sum(1 for d in deployments.items if d.spec.replicas == 1)
+            if single_replica > 5:
+                observations.append({
+                    "type": "🔴 Misconfiguration",
+                    "issue": f"{single_replica} deployments with single replica - no redundancy",
+                    "color": "red"
+                })
+            
+            # Check pod health
+            health_pct = int((running_pods / len(all_pods.items) * 100)) if len(all_pods.items) > 0 else 0
+            if health_pct < 90:
+                observations.append({
+                    "type": "🔴 Health Issue",
+                    "issue": f"Only {health_pct}% pods running - cluster degraded",
+                    "color": "red"
+                })
+            
+            # Check for pending pods
+            if pending_pods > 3:
+                observations.append({
+                    "type": "⚠️  Resource Issue",
+                    "issue": f"{pending_pods} pods pending - possible resource constraints",
+                    "color": "yellow"
+                })
+            
+            # Check for failed pods
+            if failed_pods > 0:
+                observations.append({
+                    "type": "🔴 Failures",
+                    "issue": f"{failed_pods} failed pods detected",
+                    "color": "red"
+                })
+            
+            # Check node distribution
+            pod_distribution = {}
+            for pod in all_pods.items:
+                node = pod.spec.node_name
+                if node:
+                    pod_distribution[node] = pod_distribution.get(node, 0) + 1
+            
+            if pod_distribution:
+                max_pods = max(pod_distribution.values())
+                min_pods = min(pod_distribution.values())
+                if max_pods > min_pods * 2:
+                    observations.append({
+                        "type": "⚠️  Imbalance",
+                        "issue": f"Uneven pod distribution across nodes ({min_pods}-{max_pods} pods/node)",
+                        "color": "yellow"
+                    })
+            
+            # Display observations
+            if observations:
+                console.print("[bold yellow]🔍 TARS Observations:[/bold yellow]\n")
+                for obs in observations:
+                    console.print(f"[{obs['color']}]{obs['type']}[/{obs['color']}] {obs['issue']}")
+                console.print()
+                console.print("[dim]Run 'tars chaos' for detailed analysis[/dim]\n")
+            else:
+                console.print("[bold green]✓ No issues detected. Cluster looks healthy![/bold green]\n")
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error: {e}")
