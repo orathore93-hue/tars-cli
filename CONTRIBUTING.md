@@ -65,7 +65,7 @@ Thank you for considering contributing to T.A.R.S! 🤖
 Open an issue or reach out to the maintainer:
 
 - 📧 Email: [orathore93@gmail.com](mailto:orathore93@gmail.com)
-- 💼 LinkedIn: [linkedin.com/in/omerrathore](https://linkedin.com/in/omerrathore)
+- 💼 LinkedIn: [linkedin.com/in/omer-rathore-b82b9451](https://linkedin.com/in/omer-rathore-b82b9451)
 - 🐙 GitHub: [@orathore93-hue](https://github.com/orathore93-hue)
 
 ---

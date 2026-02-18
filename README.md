@@ -313,7 +313,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **Omer Rathore**
 - 📧 Email: [orathore93@gmail.com](mailto:orathore93@gmail.com)
-- 💼 LinkedIn: [linkedin.com/in/omerrathore](https://linkedin.com/in/omerrathore)
+- 💼 LinkedIn: [linkedin.com/in/omer-rathore-b82b9451](https://linkedin.com/in/omer-rathore-b82b9451)
 - 🐙 GitHub: [@orathore93-hue](https://github.com/orathore93-hue)
 - 🚀 Project: [T.A.R.S](https://github.com/orathore93-hue/tars-cli)
 

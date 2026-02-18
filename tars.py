@@ -1068,7 +1068,7 @@ def creator():
 ║  Created by: [bold yellow]Omer Rathore[/bold yellow]                          ║
 ║                                                       ║
 ║  📧 Email:    [bold blue]orathore93@gmail.com[/bold blue]                ║
-║  💼 LinkedIn: [bold blue]linkedin.com/in/omerrathore[/bold blue]        ║
+║  💼 LinkedIn: [bold blue]linkedin.com/in/omer-rathore-b82b9451[/bold blue]        ║
 ║  🐙 GitHub:   [bold blue]@orathore93-hue[/bold blue]                      ║
 ║                                                       ║
 ║  [dim]"An AI-powered Kubernetes monitoring tool with[/dim]    ║
