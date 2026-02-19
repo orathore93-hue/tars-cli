@@ -24,12 +24,12 @@ app = typer.Typer(
 TARS_ASCII = """[bold cyan]
     ╔════════════════════════════════════════════════════════════╗
     ║                                                            ║
-    ║  ████████╗     █████╗     ██████╗     ███████╗           ║
-    ║  ╚══██╔══╝    ██╔══██╗    ██╔══██╗    ██╔════╝           ║
-    ║     ██║       ███████║    ██████╔╝    ███████╗           ║
-    ║     ██║   ██  ██╔══██║    ██╔══██╗    ╚════██║           ║
-    ║     ██║   ██  ██║  ██║    ██║  ██║    ███████║           ║
-    ║     ╚═╝   ╚═  ╚═╝  ╚═╝    ╚═╝  ╚═╝    ╚══════╝           ║
+    ║  ████████╗ .  █████╗ .  ██████╗ .  ███████╗              ║
+    ║  ╚══██╔══╝ . ██╔══██╗.  ██╔══██╗.  ██╔════╝              ║
+    ║     ██║    . ███████║.  ██████╔╝.  ███████╗              ║
+    ║     ██║    . ██╔══██║.  ██╔══██╗.  ╚════██║              ║
+    ║     ██║    . ██║  ██║.  ██║  ██║.  ███████║              ║
+    ║     ╚═╝    . ╚═╝  ╚═╝.  ╚═╝  ╚═╝.  ╚══════╝              ║
     ║                                                            ║
     ║    [/bold cyan][bold yellow]Technical Assistance & Reliability System[/bold yellow][bold cyan]       ║
     ║                                                            ║
@@ -42,7 +42,7 @@ TARS_ROBOT = """[bold cyan]
         ╔═══════════════════════════════════╗
         ║   ┌─────────────────────────┐   ║
         ║   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │   ║
-        ║   │  ▓ [/bold cyan][bold yellow]◉[/bold yellow][bold cyan]  TARS  [/bold cyan][bold yellow]◉[/bold yellow][bold cyan]  ▓  │   ║
+        ║   │  ▓ [/bold cyan][bold yellow]◉[/bold yellow][bold cyan] T.A.R.S [/bold cyan][bold yellow]◉[/bold yellow][bold cyan] ▓  │   ║
         ║   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │   ║
         ║   │  ▓  [/bold cyan][bold green]═══════════[/bold green][bold cyan]  ▓  │   ║
         ║   │  ▓  [/bold cyan][bold green]═══════════[/bold green][bold cyan]  ▓  │   ║
