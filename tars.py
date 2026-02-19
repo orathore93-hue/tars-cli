@@ -273,7 +273,12 @@ def pods(namespace: str = typer.Option("default", help="Namespace to check")):
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
 
 @app.command()
-def watch(namespace: str = typer.Option("default", help="Namespace to watch"), interval: int = typer.Option(5, help="Refresh interval in seconds")):
+def watch(
+    namespace: str = typer.Option("default", help="Namespace to watch"),
+    all_namespaces: bool = typer.Option(False, "--all-namespaces", help="Watch all namespaces"),
+    namespaces: str = typer.Option(None, "--namespaces", help="Comma-separated list of namespaces"),
+    interval: int = typer.Option(5, help="Refresh interval in seconds")
+):
     """Real-time pod monitoring dashboard"""
     try:
         config.load_kube_config()
@@ -282,9 +287,26 @@ def watch(namespace: str = typer.Option("default", help="Namespace to watch"), i
         console.print("[bold green]TARS:[/bold green] watching your cluster... Press Ctrl+C to stop\n")
         
         while True:
-            pods = v1.list_namespaced_pod(namespace)
+            # Determine which pods to fetch
+            if all_namespaces:
+                pods = v1.list_pod_for_all_namespaces()
+                show_namespace = True
+            elif namespaces:
+                ns_list = [ns.strip() for ns in namespaces.split(',')]
+                all_pods = []
+                for ns in ns_list:
+                    all_pods.extend(v1.list_namespaced_pod(ns).items)
+                pods = type('obj', (object,), {'items': all_pods})()
+                show_namespace = True
+            else:
+                pods = v1.list_namespaced_pod(namespace)
+                show_namespace = False
             
             table = Table(title=f"Live Pod Monitor - {datetime.now().strftime('%H:%M:%S')}")
+            
+            if show_namespace:
+                table.add_column("Namespace", style="magenta")
+            
             table.add_column("Pod", style="cyan")
             table.add_column("Status", style="green")
             table.add_column("Restarts", style="yellow")
@@ -296,12 +318,22 @@ def watch(namespace: str = typer.Option("default", help="Namespace to watch"), i
                 ready = f"{sum([1 for c in pod.status.container_statuses if c.ready])}/{len(pod.status.container_statuses)}" if pod.status.container_statuses else "0/0"
                 
                 status_color = "green" if status == "Running" else "red"
-                table.add_row(
-                    pod.metadata.name[:40],
-                    f"[{status_color}]{status}[/{status_color}]",
-                    str(restarts),
-                    ready
-                )
+                
+                if show_namespace:
+                    table.add_row(
+                        pod.metadata.namespace,
+                        pod.metadata.name[:40],
+                        f"[{status_color}]{status}[/{status_color}]",
+                        str(restarts),
+                        ready
+                    )
+                else:
+                    table.add_row(
+                        pod.metadata.name[:40],
+                        f"[{status_color}]{status}[/{status_color}]",
+                        str(restarts),
+                        ready
+                    )
             
             console.clear()
             console.print(table)
@@ -3422,6 +3454,532 @@ def diff(context1: str = typer.Argument(...), context2: str = typer.Argument(...
             table.add_row(key.replace('_', ' ').title(), str(info1[key]), str(info2[key]), diff_str)
         
         console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def dashboard(
+    interval: int = typer.Option(5, help="Refresh interval in seconds"),
+    all_namespaces: bool = typer.Option(False, "--all-namespaces", help="Monitor all namespaces")
+):
+    """Unified real-time monitoring dashboard"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        while True:
+            console.clear()
+            console.print(f"[bold cyan]TARS Dashboard[/bold cyan] - {datetime.now().strftime('%H:%M:%S')}\n")
+            
+            # Pods
+            pods = v1.list_pod_for_all_namespaces() if all_namespaces else v1.list_namespaced_pod("default")
+            running = len([p for p in pods.items if p.status.phase == "Running"])
+            failed = len([p for p in pods.items if p.status.phase == "Failed"])
+            pending = len([p for p in pods.items if p.status.phase == "Pending"])
+            
+            # Nodes
+            nodes = v1.list_node()
+            ready_nodes = len([n for n in nodes.items if any(c.type == "Ready" and c.status == "True" for c in n.status.conditions)])
+            
+            # Summary
+            summary = Table.grid(padding=1)
+            summary.add_column(style="cyan", justify="right")
+            summary.add_column(style="bold")
+            summary.add_row("Pods Running:", f"[green]{running}[/green]")
+            summary.add_row("Pods Failed:", f"[red]{failed}[/red]")
+            summary.add_row("Pods Pending:", f"[yellow]{pending}[/yellow]")
+            summary.add_row("Nodes Ready:", f"[green]{ready_nodes}/{len(nodes.items)}[/green]")
+            
+            console.print(Panel(summary, title="Cluster Status", border_style="cyan"))
+            
+            # Recent pods
+            table = Table(title="Recent Pods")
+            table.add_column("Namespace", style="magenta")
+            table.add_column("Pod", style="cyan")
+            table.add_column("Status", style="green")
+            table.add_column("Restarts", style="yellow")
+            
+            for pod in pods.items[:15]:
+                status = pod.status.phase
+                restarts = sum([c.restart_count for c in pod.status.container_statuses]) if pod.status.container_statuses else 0
+                status_color = "green" if status == "Running" else "red"
+                table.add_row(
+                    pod.metadata.namespace,
+                    pod.metadata.name[:40],
+                    f"[{status_color}]{status}[/{status_color}]",
+                    str(restarts)
+                )
+            
+            console.print(table)
+            time.sleep(interval)
+            
+    except KeyboardInterrupt:
+        console.print("\n[bold green]TARS:[/bold green] Dashboard stopped.")
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def heatmap(namespace: str = typer.Option("default", help="Namespace")):
+    """Resource usage heatmap"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        table = Table(title="Resource Usage Heatmap")
+        table.add_column("Pod", style="cyan")
+        table.add_column("CPU Usage", style="yellow")
+        table.add_column("Memory Usage", style="magenta")
+        
+        for pod in pods.items:
+            if pod.spec.containers:
+                cpu_req = pod.spec.containers[0].resources.requests.get('cpu', 'N/A') if pod.spec.containers[0].resources.requests else 'N/A'
+                mem_req = pod.spec.containers[0].resources.requests.get('memory', 'N/A') if pod.spec.containers[0].resources.requests else 'N/A'
+                
+                table.add_row(pod.metadata.name[:40], str(cpu_req), str(mem_req))
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def cost(namespace: str = typer.Option("default", help="Namespace")):
+    """Cost analysis and optimization recommendations"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        total_cpu = 0
+        total_memory = 0
+        
+        for pod in pods.items:
+            if pod.spec.containers:
+                for container in pod.spec.containers:
+                    if container.resources.requests:
+                        cpu = container.resources.requests.get('cpu', '0')
+                        mem = container.resources.requests.get('memory', '0')
+                        
+                        if isinstance(cpu, str) and 'm' in cpu:
+                            total_cpu += int(cpu.replace('m', '')) / 1000
+                        
+                        if isinstance(mem, str):
+                            if 'Mi' in mem:
+                                total_memory += int(mem.replace('Mi', ''))
+                            elif 'Gi' in mem:
+                                total_memory += int(mem.replace('Gi', '')) * 1024
+        
+        console.print(f"\n[bold cyan]Cost Analysis for namespace: {namespace}[/bold cyan]\n")
+        console.print(f"Total CPU Requested: [yellow]{total_cpu:.2f} cores[/yellow]")
+        console.print(f"Total Memory Requested: [yellow]{total_memory} Mi[/yellow]")
+        console.print(f"\n[dim]Estimated monthly cost: ~${(total_cpu * 30 + total_memory * 0.004):.2f}[/dim]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def trace(service: str, namespace: str = typer.Option("default", help="Namespace")):
+    """Show service dependencies and latency"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        svc = v1.read_namespaced_service(service, namespace)
+        
+        console.print(f"\n[bold cyan]Service Trace: {service}[/bold cyan]\n")
+        console.print(f"Type: [yellow]{svc.spec.type}[/yellow]")
+        console.print(f"Cluster IP: [yellow]{svc.spec.cluster_ip}[/yellow]")
+        console.print(f"Ports: [yellow]{', '.join([f'{p.port}:{p.target_port}' for p in svc.spec.ports])}[/yellow]")
+        
+        # Find pods
+        pods = v1.list_namespaced_pod(namespace, label_selector=','.join([f'{k}={v}' for k, v in svc.spec.selector.items()]))
+        
+        console.print(f"\nBacked by [green]{len(pods.items)}[/green] pods:")
+        for pod in pods.items:
+            console.print(f"  • {pod.metadata.name} - {pod.status.phase}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def aggregate_logs(
+    namespace: str = typer.Option("default", help="Namespace"),
+    pattern: str = typer.Option(None, help="Pattern to search"),
+    tail: int = typer.Option(100, help="Lines per pod")
+):
+    """Aggregate logs across all pods in namespace"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        console.print(f"\n[bold cyan]Aggregated Logs - {namespace}[/bold cyan]\n")
+        
+        for pod in pods.items:
+            try:
+                logs = v1.read_namespaced_pod_log(pod.metadata.name, namespace, tail_lines=tail)
+                
+                if pattern:
+                    matching_lines = [line for line in logs.split('\n') if pattern in line]
+                    if matching_lines:
+                        console.print(f"\n[yellow]{pod.metadata.name}:[/yellow]")
+                        for line in matching_lines[:10]:
+                            console.print(f"  {line}")
+                else:
+                    console.print(f"\n[yellow]{pod.metadata.name}:[/yellow]")
+                    for line in logs.split('\n')[-5:]:
+                        console.print(f"  {line}")
+                        
+            except Exception:
+                continue
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def profile(pod_name: str, namespace: str = typer.Option("default", help="Namespace")):
+    """CPU/Memory profiling for a pod"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pod = v1.read_namespaced_pod(pod_name, namespace)
+        
+        console.print(f"\n[bold cyan]Resource Profile: {pod_name}[/bold cyan]\n")
+        
+        for container in pod.spec.containers:
+            console.print(f"[yellow]Container: {container.name}[/yellow]")
+            
+            if container.resources.requests:
+                console.print(f"  Requests:")
+                console.print(f"    CPU: {container.resources.requests.get('cpu', 'N/A')}")
+                console.print(f"    Memory: {container.resources.requests.get('memory', 'N/A')}")
+            
+            if container.resources.limits:
+                console.print(f"  Limits:")
+                console.print(f"    CPU: {container.resources.limits.get('cpu', 'N/A')}")
+                console.print(f"    Memory: {container.resources.limits.get('memory', 'N/A')}")
+            
+            console.print()
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def benchmark():
+    """Cluster performance benchmarks"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        console.print("\n[bold cyan]Running Cluster Benchmarks...[/bold cyan]\n")
+        
+        # API response time
+        start = time.time()
+        v1.list_pod_for_all_namespaces()
+        api_time = time.time() - start
+        
+        # Node count
+        nodes = v1.list_node()
+        
+        # Pod count
+        pods = v1.list_pod_for_all_namespaces()
+        
+        table = Table(title="Benchmark Results")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="yellow")
+        table.add_column("Status", style="green")
+        
+        table.add_row("API Response Time", f"{api_time:.3f}s", "✓" if api_time < 1 else "⚠")
+        table.add_row("Total Nodes", str(len(nodes.items)), "✓")
+        table.add_row("Total Pods", str(len(pods.items)), "✓")
+        table.add_row("Running Pods", str(len([p for p in pods.items if p.status.phase == "Running"])), "✓")
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def bottleneck(namespace: str = typer.Option("default", help="Namespace")):
+    """Identify performance bottlenecks"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        console.print(f"\n[bold cyan]Bottleneck Analysis - {namespace}[/bold cyan]\n")
+        
+        issues = []
+        
+        for pod in pods.items:
+            # Check restarts
+            if pod.status.container_statuses:
+                for container in pod.status.container_statuses:
+                    if container.restart_count > 5:
+                        issues.append(f"[red]High restarts:[/red] {pod.metadata.name} ({container.restart_count} restarts)")
+            
+            # Check pending
+            if pod.status.phase == "Pending":
+                issues.append(f"[yellow]Pending pod:[/yellow] {pod.metadata.name}")
+        
+        if issues:
+            for issue in issues:
+                console.print(f"  • {issue}")
+        else:
+            console.print("[green]No bottlenecks detected[/green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def security_scan(namespace: str = typer.Option("default", help="Namespace")):
+    """Security vulnerability scan"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        console.print(f"\n[bold cyan]Security Scan - {namespace}[/bold cyan]\n")
+        
+        issues = []
+        
+        for pod in pods.items:
+            for container in pod.spec.containers:
+                # Check privileged
+                if container.security_context and container.security_context.privileged:
+                    issues.append(f"[red]Privileged container:[/red] {pod.metadata.name}/{container.name}")
+                
+                # Check root user
+                if container.security_context and container.security_context.run_as_user == 0:
+                    issues.append(f"[yellow]Running as root:[/yellow] {pod.metadata.name}/{container.name}")
+        
+        if issues:
+            for issue in issues:
+                console.print(f"  • {issue}")
+        else:
+            console.print("[green]No security issues detected[/green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def compliance(namespace: str = typer.Option("default", help="Namespace")):
+    """Policy compliance checks"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        pods = v1.list_namespaced_pod(namespace)
+        
+        console.print(f"\n[bold cyan]Compliance Check - {namespace}[/bold cyan]\n")
+        
+        compliant = 0
+        non_compliant = 0
+        
+        for pod in pods.items:
+            has_limits = False
+            has_requests = False
+            
+            for container in pod.spec.containers:
+                if container.resources.limits:
+                    has_limits = True
+                if container.resources.requests:
+                    has_requests = True
+            
+            if has_limits and has_requests:
+                compliant += 1
+            else:
+                non_compliant += 1
+                console.print(f"[yellow]Missing resource limits/requests:[/yellow] {pod.metadata.name}")
+        
+        console.print(f"\n[green]Compliant:[/green] {compliant}")
+        console.print(f"[red]Non-compliant:[/red] {non_compliant}")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def audit(namespace: str = typer.Option("default", help="Namespace"), limit: int = typer.Option(50, help="Number of events")):
+    """Audit trail of cluster events"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        events = v1.list_namespaced_event(namespace)
+        
+        console.print(f"\n[bold cyan]Audit Trail - {namespace}[/bold cyan]\n")
+        
+        table = Table()
+        table.add_column("Time", style="cyan")
+        table.add_column("Type", style="yellow")
+        table.add_column("Reason", style="magenta")
+        table.add_column("Object", style="green")
+        table.add_column("Message", style="white")
+        
+        for event in sorted(events.items, key=lambda x: x.last_timestamp or x.event_time, reverse=True)[:limit]:
+            timestamp = event.last_timestamp or event.event_time
+            table.add_row(
+                timestamp.strftime("%H:%M:%S") if timestamp else "N/A",
+                event.type,
+                event.reason,
+                f"{event.involved_object.kind}/{event.involved_object.name}",
+                event.message[:60]
+            )
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def alert_webhook(
+    webhook_url: str = typer.Option(..., help="Webhook URL (Slack/PagerDuty)"),
+    threshold_cpu: int = typer.Option(80, help="CPU threshold %"),
+    threshold_memory: int = typer.Option(85, help="Memory threshold %"),
+    namespace: str = typer.Option("default", help="Namespace"),
+    interval: int = typer.Option(60, help="Check interval in seconds")
+):
+    """Send alerts to webhook (Slack/PagerDuty)"""
+    import requests
+    
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        console.print(f"[bold green]TARS:[/bold green] Monitoring with webhook alerts enabled")
+        console.print(f"Webhook: {webhook_url[:50]}...")
+        
+        while True:
+            pods = v1.list_namespaced_pod(namespace)
+            
+            for pod in pods.items:
+                if pod.status.phase != "Running":
+                    message = {
+                        "text": f"🚨 Alert: Pod {pod.metadata.name} is {pod.status.phase} in namespace {namespace}"
+                    }
+                    requests.post(webhook_url, json=message)
+                    console.print(f"[yellow]Alert sent:[/yellow] {pod.metadata.name}")
+            
+            time.sleep(interval)
+            
+    except KeyboardInterrupt:
+        console.print("\n[bold green]TARS:[/bold green] Webhook monitoring stopped.")
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def alert_history(namespace: str = typer.Option("default", help="Namespace")):
+    """Alert history and trends"""
+    try:
+        config.load_kube_config()
+        v1 = k8s_client.CoreV1Api()
+        
+        events = v1.list_namespaced_event(namespace)
+        
+        warning_events = [e for e in events.items if e.type == "Warning"]
+        
+        console.print(f"\n[bold cyan]Alert History - {namespace}[/bold cyan]\n")
+        console.print(f"Total warnings in last hour: [yellow]{len(warning_events)}[/yellow]\n")
+        
+        table = Table()
+        table.add_column("Time", style="cyan")
+        table.add_column("Reason", style="yellow")
+        table.add_column("Object", style="green")
+        table.add_column("Message", style="white")
+        
+        for event in sorted(warning_events, key=lambda x: x.last_timestamp or x.event_time, reverse=True)[:20]:
+            timestamp = event.last_timestamp or event.event_time
+            table.add_row(
+                timestamp.strftime("%H:%M:%S") if timestamp else "N/A",
+                event.reason,
+                f"{event.involved_object.kind}/{event.involved_object.name}",
+                event.message[:60]
+            )
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def prom_record(
+    namespace: str = typer.Option("default", help="Namespace"),
+    duration: int = typer.Option(300, help="Recording duration in seconds"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Record Prometheus metrics over time"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        console.print(f"[bold cyan]Recording metrics for {duration}s...[/bold cyan]\n")
+        
+        start_time = time.time()
+        metrics_data = []
+        
+        while time.time() - start_time < duration:
+            result = prom.custom_query(f'container_memory_usage_bytes{{namespace="{namespace}"}}')
+            metrics_data.append({
+                'timestamp': datetime.now(),
+                'data': result
+            })
+            time.sleep(10)
+        
+        console.print(f"[green]Recorded {len(metrics_data)} data points[/green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def prom_compare(
+    namespace1: str = typer.Argument(..., help="First namespace"),
+    namespace2: str = typer.Argument(..., help="Second namespace"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Compare Prometheus metrics across namespaces"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        result1 = prom.custom_query(f'sum(container_memory_usage_bytes{{namespace="{namespace1}"}})')
+        result2 = prom.custom_query(f'sum(container_memory_usage_bytes{{namespace="{namespace2}"}})')
+        
+        console.print(f"\n[bold cyan]Metrics Comparison[/bold cyan]\n")
+        
+        if result1 and result2:
+            val1 = float(result1[0]['value'][1])
+            val2 = float(result2[0]['value'][1])
+            
+            console.print(f"{namespace1}: [yellow]{val1 / 1024 / 1024:.2f} Mi[/yellow]")
+            console.print(f"{namespace2}: [yellow]{val2 / 1024 / 1024:.2f} Mi[/yellow]")
+            console.print(f"Difference: [magenta]{abs(val1 - val2) / 1024 / 1024:.2f} Mi[/magenta]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+
+@app.command()
+def prom_export(
+    query: str = typer.Argument(..., help="PromQL query"),
+    output: str = typer.Option("metrics.json", help="Output file"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Export Prometheus metrics to file"""
+    import json
+    
+    try:
+        prom = get_prometheus_client(url)
+        result = prom.custom_query(query)
+        
+        with open(output, 'w') as f:
+            json.dump(result, f, indent=2, default=str)
+        
+        console.print(f"[green]Metrics exported to {output}[/green]")
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error: {e}")
