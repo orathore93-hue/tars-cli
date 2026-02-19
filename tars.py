@@ -11,6 +11,7 @@ import os
 import time
 from datetime import datetime
 import sys
+import subprocess
 
 console = Console()
 app = typer.Typer(
@@ -1597,7 +1598,25 @@ def describe(resource: str, name: str, namespace: str = typer.Option("default", 
         config.load_kube_config()
         
         console.print(f"[bold green]TARS:[/bold green] describing {resource}/{name}...\n")
-        os.system(f"kubectl describe {resource} {name} -n {namespace}")
+        
+        # Get resource description
+        import subprocess
+        result = subprocess.run(
+            ["kubectl", "describe", resource, name, "-n", namespace],
+            capture_output=True,
+            text=True
+        )
+        
+        description = result.stdout
+        console.print(description)
+        
+        # AI analysis
+        if os.getenv("GEMINI_API_KEY"):
+            analyze_desc = typer.confirm("\nWant TARS to analyze this resource?")
+            if analyze_desc:
+                with console.status("[bold green]TARS:[/bold green] analyzing resource..."):
+                    response = get_gemini_response(f"Analyze this Kubernetes {resource} and identify any issues or recommendations:\n{description}")
+                console.print(Panel(response, title="[bold green]TARS:[/bold green] Resource Analysis", border_style="cyan"))
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
