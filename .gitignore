@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+.env.local
 .DS_Store
 tars_config.json
 venv/
@@ -12,3 +13,9 @@ build/
 .pytest_cache/
 .coverage
 *.log
+*.key
+*.pem
+*.crt
+*secret*
+*token*
+.kube/config
