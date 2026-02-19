@@ -455,27 +455,82 @@ def health():
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.print("[bold green]TARS:[/bold green] Running health diagnostics...\n")
         
+        issues = []
+        
         # Check nodes
         nodes = v1.list_node()
-        healthy_nodes = sum([1 for n in nodes.items if all([c.status == "False" for c in n.status.conditions if c.type != "Ready"])])
+        unhealthy_nodes = []
+        for node in nodes.items:
+            for condition in node.status.conditions:
+                if condition.type == "Ready" and condition.status != "True":
+                    unhealthy_nodes.append(node.metadata.name)
+                elif condition.type in ["MemoryPressure", "DiskPressure", "PIDPressure"] and condition.status == "True":
+                    issues.append(f"Node {node.metadata.name}: {condition.type}")
         
         # Check pods across all namespaces
         all_pods = v1.list_pod_for_all_namespaces()
-        running_pods = sum([1 for p in all_pods.items if p.status.phase == "Running"])
+        running_pods = 0
+        crashloop_pods = []
+        pending_pods = []
+        failed_pods = []
+        oom_pods = []
+        image_pull_errors = []
+        
+        for pod in all_pods.items:
+            if pod.status.phase == "Running":
+                running_pods += 1
+            elif pod.status.phase == "Failed":
+                failed_pods.append(f"{pod.metadata.namespace}/{pod.metadata.name}")
+            elif pod.status.phase == "Pending":
+                pending_pods.append(f"{pod.metadata.namespace}/{pod.metadata.name}")
+            
+            # Check container states
+            if pod.status.container_statuses:
+                for container in pod.status.container_statuses:
+                    if container.state.waiting:
+                        if container.state.waiting.reason == "CrashLoopBackOff":
+                            crashloop_pods.append(f"{pod.metadata.namespace}/{pod.metadata.name}")
+                        elif container.state.waiting.reason in ["ImagePullBackOff", "ErrImagePull"]:
+                            image_pull_errors.append(f"{pod.metadata.namespace}/{pod.metadata.name}")
+                    if container.last_state.terminated and container.last_state.terminated.reason == "OOMKilled":
+                        oom_pods.append(f"{pod.metadata.namespace}/{pod.metadata.name}")
+        
+        # Check deployments
+        all_deployments = apps_v1.list_deployment_for_all_namespaces()
+        unhealthy_deployments = []
+        for dep in all_deployments.items:
+            if dep.status.replicas != dep.status.ready_replicas:
+                unhealthy_deployments.append(f"{dep.metadata.namespace}/{dep.metadata.name}")
+        
+        # Check services
+        all_services = v1.list_service_for_all_namespaces()
+        services_without_endpoints = []
+        for svc in all_services.items:
+            if svc.spec.type != "ExternalName":
+                try:
+                    endpoints = v1.read_namespaced_endpoints(svc.metadata.name, svc.metadata.namespace)
+                    if not endpoints.subsets or not any(s.addresses for s in endpoints.subsets):
+                        services_without_endpoints.append(f"{svc.metadata.namespace}/{svc.metadata.name}")
+                except:
+                    pass
+        
         total_pods = len(all_pods.items)
-        failed_pods = sum([1 for p in all_pods.items if p.status.phase == "Failed"])
         
-        # Check namespaces
-        namespaces = v1.list_namespace()
-        
+        # Build health report
         health_data = [
-            ("Nodes", f"{len(nodes.items)} total", "green"),
+            ("Nodes", f"{len(nodes.items) - len(unhealthy_nodes)}/{len(nodes.items)}", "green" if not unhealthy_nodes else "red"),
             ("Pods Running", f"{running_pods}/{total_pods}", "green" if running_pods == total_pods else "yellow"),
-            ("Failed Pods", str(failed_pods), "red" if failed_pods > 0 else "green"),
-            ("Namespaces", str(len(namespaces.items)), "cyan"),
+            ("CrashLoopBackOff", str(len(crashloop_pods)), "red" if crashloop_pods else "green"),
+            ("Pending Pods", str(len(pending_pods)), "yellow" if pending_pods else "green"),
+            ("Failed Pods", str(len(failed_pods)), "red" if failed_pods else "green"),
+            ("OOMKilled", str(len(oom_pods)), "red" if oom_pods else "green"),
+            ("Image Pull Errors", str(len(image_pull_errors)), "red" if image_pull_errors else "green"),
+            ("Unhealthy Deployments", str(len(unhealthy_deployments)), "red" if unhealthy_deployments else "green"),
+            ("Services w/o Endpoints", str(len(services_without_endpoints)), "yellow" if services_without_endpoints else "green"),
         ]
         
         table = Table(title="Cluster Health Report")
@@ -489,8 +544,24 @@ def health():
         
         console.print(table)
         
-        if failed_pods > 0:
-            console.print(f"\n[bold red]TARS:[/bold red] [red]⚠ {failed_pods} failed pod(s) detected. Run: tars analyze[/red]")
+        # Show detailed issues
+        if crashloop_pods or failed_pods or unhealthy_nodes or image_pull_errors or oom_pods or unhealthy_deployments:
+            console.print("\n[bold red]⚠ Issues Detected:[/bold red]")
+            if unhealthy_nodes:
+                console.print(f"  [red]• Unhealthy Nodes: {', '.join(unhealthy_nodes[:3])}[/red]")
+            if crashloop_pods:
+                console.print(f"  [red]• CrashLoopBackOff: {', '.join(crashloop_pods[:3])}[/red]")
+            if failed_pods:
+                console.print(f"  [red]• Failed Pods: {', '.join(failed_pods[:3])}[/red]")
+            if oom_pods:
+                console.print(f"  [red]• OOMKilled: {', '.join(oom_pods[:3])}[/red]")
+            if image_pull_errors:
+                console.print(f"  [red]• Image Pull Errors: {', '.join(image_pull_errors[:3])}[/red]")
+            if unhealthy_deployments:
+                console.print(f"  [yellow]• Unhealthy Deployments: {', '.join(unhealthy_deployments[:3])}[/yellow]")
+            if services_without_endpoints:
+                console.print(f"  [yellow]• Services w/o Endpoints: {', '.join(services_without_endpoints[:3])}[/yellow]")
+            console.print("\n[bold yellow]Run 'tars autofix --namespace <ns> --no-dry-run' to auto-fix issues[/bold yellow]")
         else:
             console.print(f"\n[bold green]TARS:[/bold green] Cluster health is optimal. I'd give it a 95% rating.")
         
