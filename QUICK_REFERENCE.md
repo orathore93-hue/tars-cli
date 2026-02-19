@@ -36,6 +36,16 @@ tars metrics         # Resource usage
 tars resources <ns>  # All resources in namespace
 ```
 
+## 📈 Prometheus Metrics
+
+```bash
+tars prom-check      # Check connection
+tars prom-metrics    # Pod metrics
+tars prom-alerts     # Active alerts
+tars prom-dashboard  # Metrics dashboard
+tars prom-query "query" # Custom PromQL
+```
+
 ## 📝 Documentation
 
 ```bash

@@ -197,6 +197,26 @@ tars context
 tars health
 ```
 
+### Scenario 5: Prometheus Metrics Analysis
+
+```bash
+# Check Prometheus connection
+tars prom-check --url http://prometheus.example.com:9090
+
+# View metrics dashboard
+tars prom-dashboard --namespace production
+
+# Check specific pod metrics
+tars prom-metrics --namespace production --pod api-server-xyz
+
+# Monitor active alerts
+tars prom-alerts
+
+# Run custom PromQL queries
+tars prom-query 'rate(http_requests_total[5m])'
+tars prom-query 'container_memory_usage_bytes{namespace="production"}'
+```
+
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
@@ -217,8 +237,14 @@ pip install tars-cli
 # Set Gemini API key (for AI features)
 export GEMINI_API_KEY='your-key'
 
+# Set Prometheus URL (for metrics features)
+export PROMETHEUS_URL='http://localhost:9090'
+
 # Verify setup
 tars setup
+
+# Check Prometheus connection
+tars prom-check
 ```
 
 ### Optional: Shell Completion
@@ -254,6 +280,16 @@ tars --install-completion zsh
 | `tars metrics` | Resource usage |
 | `tars top` | Top consumers |
 | `tars resources <ns>` | All resources in namespace |
+
+### Prometheus Integration
+
+| Command | Description |
+|---------|-------------|
+| `tars prom-check` | Check Prometheus connection |
+| `tars prom-metrics` | Show pod metrics from Prometheus |
+| `tars prom-alerts` | Show active Prometheus alerts |
+| `tars prom-query <query>` | Run custom PromQL query |
+| `tars prom-dashboard` | Metrics dashboard |
 
 ### Troubleshooting
 

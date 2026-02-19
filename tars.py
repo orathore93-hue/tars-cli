@@ -7,9 +7,10 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from kubernetes import client as k8s_client, config
 from google import genai
+from prometheus_api_client import PrometheusConnect
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 import subprocess
 
@@ -1140,6 +1141,243 @@ def resources(namespace: str = typer.Argument("default", help="Namespace to chec
             console.print(table)
         
         console.print(f"\n[bold green]✓ Found {len(pods)} pods, {len(services)} services, {len(deployments)} deployments[/bold green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+
+def get_prometheus_client(url: str = None):
+    """Get Prometheus client with connection check"""
+    if not url:
+        url = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
+    
+    try:
+        prom = PrometheusConnect(url=url, disable_ssl=True)
+        if not prom.check_prometheus_connection():
+            console.print(f"[bold red]✗[/bold red] Cannot connect to Prometheus at {url}")
+            console.print("[yellow]Set PROMETHEUS_URL environment variable or use --url option[/yellow]")
+            raise typer.Exit(1)
+        return prom
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Prometheus connection failed:", str(e), markup=False)
+        console.print(f"[yellow]Trying to connect to: {url}[/yellow]")
+        raise typer.Exit(1)
+
+@app.command()
+def prom_check(url: str = typer.Option(None, help="Prometheus URL")):
+    """Check Prometheus connection"""
+    try:
+        prom_url = url or os.getenv("PROMETHEUS_URL", "http://localhost:9090")
+        prom = PrometheusConnect(url=prom_url, disable_ssl=True)
+        
+        if prom.check_prometheus_connection():
+            console.print(f"[bold green]✓[/bold green] Connected to Prometheus at {prom_url}")
+            
+            # Get basic info
+            metrics_count = len(prom.all_metrics())
+            console.print(f"[cyan]Total metrics available:[/cyan] {metrics_count}")
+        else:
+            console.print(f"[bold red]✗[/bold red] Cannot connect to Prometheus at {prom_url}")
+            
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+
+@app.command()
+def prom_metrics(
+    namespace: str = typer.Option("default", help="Namespace"),
+    pod: str = typer.Option(None, help="Specific pod name"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Show Prometheus metrics for pods"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        # CPU metrics
+        cpu_query = f'rate(container_cpu_usage_seconds_total{{namespace="{namespace}"'
+        if pod:
+            cpu_query += f', pod="{pod}"'
+        cpu_query += '}[5m])'
+        
+        # Memory metrics
+        mem_query = f'container_memory_working_set_bytes{{namespace="{namespace}"'
+        if pod:
+            mem_query += f', pod="{pod}"'
+        mem_query += '}'
+        
+        cpu_data = prom.custom_query(cpu_query)
+        mem_data = prom.custom_query(mem_query)
+        
+        table = Table(title=f"Prometheus Metrics - {namespace}")
+        table.add_column("Pod", style="cyan")
+        table.add_column("Container", style="yellow")
+        table.add_column("CPU (cores)", style="magenta")
+        table.add_column("Memory (MB)", style="blue")
+        
+        # Process CPU data
+        for metric in cpu_data:
+            pod_name = metric['metric'].get('pod', 'N/A')
+            container = metric['metric'].get('container', 'N/A')
+            cpu_value = float(metric['value'][1])
+            
+            # Find corresponding memory
+            mem_value = "N/A"
+            for mem_metric in mem_data:
+                if (mem_metric['metric'].get('pod') == pod_name and 
+                    mem_metric['metric'].get('container') == container):
+                    mem_bytes = float(mem_metric['value'][1])
+                    mem_value = f"{mem_bytes / 1024 / 1024:.2f}"
+                    break
+            
+            table.add_row(
+                pod_name[:40],
+                container[:20],
+                f"{cpu_value:.4f}",
+                mem_value
+            )
+        
+        console.print(table)
+        
+        if not cpu_data:
+            console.print("[yellow]No metrics found. Make sure Prometheus is scraping your cluster.[/yellow]")
+            
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+
+@app.command()
+def prom_alerts(url: str = typer.Option(None, help="Prometheus URL")):
+    """Show active Prometheus alerts"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        # Query for alerts
+        alerts_query = 'ALERTS{alertstate="firing"}'
+        alerts = prom.custom_query(alerts_query)
+        
+        if not alerts:
+            console.print("[bold green]✓ No active alerts[/bold green]")
+            return
+        
+        table = Table(title="Active Prometheus Alerts")
+        table.add_column("Alert Name", style="red")
+        table.add_column("Severity", style="yellow")
+        table.add_column("Instance", style="cyan")
+        table.add_column("Summary", style="white")
+        
+        for alert in alerts:
+            metric = alert['metric']
+            alert_name = metric.get('alertname', 'N/A')
+            severity = metric.get('severity', 'N/A')
+            instance = metric.get('instance', 'N/A')
+            summary = metric.get('summary', 'N/A')
+            
+            table.add_row(alert_name, severity, instance, summary[:50])
+        
+        console.print(table)
+        console.print(f"\n[bold red]⚠ {len(alerts)} active alerts[/bold red]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+
+@app.command()
+def prom_query(
+    query: str = typer.Argument(..., help="PromQL query"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Run custom PromQL query"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        result = prom.custom_query(query)
+        
+        if not result:
+            console.print("[yellow]No results found[/yellow]")
+            return
+        
+        table = Table(title=f"Query: {query[:60]}...")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Labels", style="yellow")
+        table.add_column("Value", style="green")
+        
+        for item in result[:20]:  # Limit to 20 results
+            metric_name = item['metric'].get('__name__', 'N/A')
+            labels = {k: v for k, v in item['metric'].items() if k != '__name__'}
+            value = item['value'][1]
+            
+            labels_str = ", ".join([f"{k}={v}" for k, v in list(labels.items())[:3]])
+            if len(labels) > 3:
+                labels_str += "..."
+            
+            table.add_row(metric_name, labels_str, str(value))
+        
+        console.print(table)
+        
+        if len(result) > 20:
+            console.print(f"\n[dim]Showing 20 of {len(result)} results[/dim]")
+        
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+
+@app.command()
+def prom_dashboard(
+    namespace: str = typer.Option("default", help="Namespace"),
+    url: str = typer.Option(None, help="Prometheus URL")
+):
+    """Show Prometheus metrics dashboard"""
+    try:
+        prom = get_prometheus_client(url)
+        
+        console.print(f"\n[bold cyan]Prometheus Dashboard - {namespace}[/bold cyan]\n")
+        
+        # CPU Usage
+        cpu_query = f'sum(rate(container_cpu_usage_seconds_total{{namespace="{namespace}"}}[5m])) by (pod)'
+        cpu_data = prom.custom_query(cpu_query)
+        
+        if cpu_data:
+            table = Table(title="CPU Usage (5m avg)")
+            table.add_column("Pod", style="cyan")
+            table.add_column("CPU Cores", style="magenta")
+            
+            for metric in sorted(cpu_data, key=lambda x: float(x['value'][1]), reverse=True)[:10]:
+                pod_name = metric['metric'].get('pod', 'N/A')
+                cpu_value = float(metric['value'][1])
+                table.add_row(pod_name[:40], f"{cpu_value:.4f}")
+            
+            console.print(table)
+        
+        # Memory Usage
+        mem_query = f'sum(container_memory_working_set_bytes{{namespace="{namespace}"}}) by (pod)'
+        mem_data = prom.custom_query(mem_query)
+        
+        if mem_data:
+            table = Table(title="Memory Usage")
+            table.add_column("Pod", style="cyan")
+            table.add_column("Memory (MB)", style="blue")
+            
+            for metric in sorted(mem_data, key=lambda x: float(x['value'][1]), reverse=True)[:10]:
+                pod_name = metric['metric'].get('pod', 'N/A')
+                mem_bytes = float(metric['value'][1])
+                mem_mb = mem_bytes / 1024 / 1024
+                table.add_row(pod_name[:40], f"{mem_mb:.2f}")
+            
+            console.print(table)
+        
+        # Network I/O
+        net_query = f'sum(rate(container_network_receive_bytes_total{{namespace="{namespace}"}}[5m])) by (pod)'
+        net_data = prom.custom_query(net_query)
+        
+        if net_data:
+            table = Table(title="Network Receive (5m avg)")
+            table.add_column("Pod", style="cyan")
+            table.add_column("Bytes/sec", style="green")
+            
+            for metric in sorted(net_data, key=lambda x: float(x['value'][1]), reverse=True)[:10]:
+                pod_name = metric['metric'].get('pod', 'N/A')
+                bytes_sec = float(metric['value'][1])
+                table.add_row(pod_name[:40], f"{bytes_sec:.2f}")
+            
+            console.print(table)
+        
+        if not cpu_data and not mem_data:
+            console.print("[yellow]No metrics found. Ensure Prometheus is scraping your cluster.[/yellow]")
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)

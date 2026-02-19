@@ -2,3 +2,4 @@ typer
 rich
 kubernetes
 google-genai
+prometheus-api-client
