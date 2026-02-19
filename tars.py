@@ -514,7 +514,7 @@ def metrics(namespace: str = typer.Option("default", help="Namespace to check"))
     """Check CPU and memory usage across pods"""
     config.load_kube_config()
     v1 = k8s_client.CoreV1Api()
-    custom_api = client.CustomObjectsApi()
+    custom_api = k8s_client.CustomObjectsApi()
     
     console.print("[bold green]TARS:[/bold green] checking resource metrics...\n")
     
@@ -591,7 +591,7 @@ def spike(
     """Monitor for CPU/Memory spikes in real-time"""
     try:
         config.load_kube_config()
-        custom_api = client.CustomObjectsApi()
+        custom_api = k8s_client.CustomObjectsApi()
         
         console.print(f"[bold green]TARS:[/bold green] Monitoring for spikes (CPU > {cpu_threshold} cores, Memory > {memory_threshold}Mi)...")
         console.print("[dim]Press Ctrl+C to stop[/dim]\n")
@@ -666,7 +666,7 @@ def top(namespace: str = typer.Option("default", help="Namespace to check"), lim
     """Show top resource-consuming pods"""
     try:
         config.load_kube_config()
-        custom_api = client.CustomObjectsApi()
+        custom_api = k8s_client.CustomObjectsApi()
         
         console.print("[bold green]TARS:[/bold green] calculating top resource consumers...\n")
         
@@ -782,7 +782,7 @@ def deployments(namespace: str = typer.Option("default", help="Namespace to chec
     """Monitor deployments and replica status"""
     try:
         config.load_kube_config()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         deployments = apps_v1.list_namespaced_deployment(namespace)
         
@@ -924,7 +924,7 @@ def ingress(namespace: str = typer.Option("default", help="Namespace to check"))
     """Monitor ingress resources"""
     try:
         config.load_kube_config()
-        networking_v1 = client.NetworkingV1Api()
+        networking_v1 = k8s_client.NetworkingV1Api()
         
         ingresses = networking_v1.list_namespaced_ingress(namespace)
         
@@ -1011,7 +1011,7 @@ def namespaces():
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         namespaces = v1.list_namespace()
         
@@ -1098,7 +1098,7 @@ def scale(deployment: str, replicas: int, namespace: str = typer.Option("default
     """Scale a deployment up or down"""
     try:
         config.load_kube_config()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.print(f"[bold green]TARS:[/bold green] scaling {deployment} to {replicas} replicas...")
         
@@ -1314,7 +1314,7 @@ def network(namespace: str = typer.Option("default", help="Namespace")):
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        networking_v1 = client.NetworkingV1Api()
+        networking_v1 = k8s_client.NetworkingV1Api()
         
         console.print("[bold green]TARS:[/bold green] checking network configuration...\n")
         
@@ -1495,7 +1495,7 @@ def rollback(deployment: str, namespace: str = typer.Option("default", help="Nam
     """Rollback deployment to previous revision"""
     try:
         config.load_kube_config()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.print(f"[bold green]TARS:[/bold green] rolling back {deployment}...")
         
@@ -1656,7 +1656,7 @@ def context():
             # Reload config for new context
             config.load_kube_config()
             v1 = k8s_client.CoreV1Api()
-            apps_v1 = client.AppsV1Api()
+            apps_v1 = k8s_client.AppsV1Api()
             
             # Gather metrics
             nodes = v1.list_node()
@@ -2122,7 +2122,7 @@ def blast():
                 
                 # Get replica count
                 if owner.kind == "ReplicaSet":
-                    apps_v1 = client.AppsV1Api()
+                    apps_v1 = k8s_client.AppsV1Api()
                     rs = apps_v1.read_namespaced_replica_set(owner.name, target_pod.metadata.namespace)
                     replicas = rs.spec.replicas
                     
@@ -2176,7 +2176,7 @@ def chaos():
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.print("[bold green]TARS:[/bold green] Running chaos engineering analysis...\n")
         
@@ -2305,7 +2305,7 @@ def slo():
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.print("[bold green]TARS:[/bold green] Calculating SLO metrics...\n")
         
@@ -2531,7 +2531,7 @@ def oncall(namespace: str = typer.Option("default", help="Namespace to monitor")
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        apps_v1 = client.AppsV1Api()
+        apps_v1 = k8s_client.AppsV1Api()
         
         console.clear()
         console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
@@ -2714,8 +2714,8 @@ def smart_scale(deployment: str, namespace: str = typer.Option("default", help="
     """AI-powered smart scaling based on current load"""
     try:
         config.load_kube_config()
-        apps_v1 = client.AppsV1Api()
-        custom_api = client.CustomObjectsApi()
+        apps_v1 = k8s_client.AppsV1Api()
+        custom_api = k8s_client.CustomObjectsApi()
         
         console.print(f"[bold cyan]🧠 Smart Scaling: {deployment}[/bold cyan]\n")
         
@@ -2956,7 +2956,7 @@ def snapshot():
     try:
         config.load_kube_config()
         v1 = k8s_client.CoreV1Api()
-        apps_v1 = k8s_client.AppsV1Api()
+        apps_v1 = k8s_k8s_client.AppsV1Api()
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         snapshot_dir = f"tars_snapshot_{timestamp}"
@@ -3046,7 +3046,7 @@ def diff(context1: str = typer.Argument(...), context2: str = typer.Argument(...
         def get_cluster_info(ctx):
             config.load_kube_config(context=ctx)
             v1 = k8s_client.CoreV1Api()
-            apps_v1 = k8s_client.AppsV1Api()
+            apps_v1 = k8s_k8s_client.AppsV1Api()
             
             pods = v1.list_pod_for_all_namespaces()
             deployments = apps_v1.list_deployment_for_all_namespaces()
