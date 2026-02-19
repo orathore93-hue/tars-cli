@@ -6,7 +6,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from kubernetes import client, config
-import google.generativeai as genai
+from google import genai
 import os
 import time
 from datetime import datetime
@@ -115,8 +115,7 @@ def get_gemini_response(prompt: str) -> str:
     if not api_key:
         return "Error: GEMINI_API_KEY not set. Developer, I need that API key to function properly."
     
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
+    client = genai.Client(api_key=api_key)
     
     tars_prompt = f"""You are TARS - a sarcastic, witty AI assistant with 90% humor setting.
 Analyze this Kubernetes issue and respond with dry humor and helpful insights.
@@ -124,7 +123,7 @@ Keep responses concise and actionable.
 
 {prompt}"""
     
-    response = model.generate_content(tars_prompt)
+    response = client.models.generate_content(model='gemini-2.0-flash-exp', contents=tars_prompt)
     return response.text
 
 @app.command()
@@ -140,9 +139,8 @@ def setup():
     if api_key:
         console.print("   [bold green]✓[/bold green] GEMINI_API_KEY is set")
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
-            model.generate_content("test")
+            client = genai.Client(api_key=api_key)
+            client.models.generate_content(model='gemini-2.0-flash-exp', contents="test")
             console.print("   [bold green]✓[/bold green] API key is valid\n")
         except Exception as e:
             console.print(f"   [bold red]✗[/bold red] API key invalid: {e}\n")
@@ -279,7 +277,7 @@ def watch(namespace: str = typer.Option("default", help="Namespace to watch"), i
         config.load_kube_config()
         v1 = client.CoreV1Api()
         
-        console.print("[bold green]TARS: [/bold green]watching your cluster... Press Ctrl+C to stop[/bold cyan]\n")
+        console.print("[bold green]TARS:[/bold green] watching your cluster... Press Ctrl+C to stop\n")
         
         while True:
             pods = v1.list_namespaced_pod(namespace)
@@ -308,7 +306,7 @@ def watch(namespace: str = typer.Option("default", help="Namespace to watch"), i
             time.sleep(interval)
             
     except KeyboardInterrupt:
-        console.print("\n[bold green]TARS: [/bold green]stopped watching. I'll be here if you need me.[/bold cyan]")
+        console.print("\n[bold green]TARS:[/bold green] stopped watching. I'll be here if you need me.")
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error: {e}")
 

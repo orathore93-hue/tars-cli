@@ -1,4 +1,4 @@
 typer
 rich
 kubernetes
-google-generativeai
+google-genai
