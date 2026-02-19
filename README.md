@@ -92,7 +92,7 @@ T.A.R.S isn't just another monitoring tool. It combines:
 ## 🚀 Installation
 
 ```bash
-pip install git+https://github.com/orathore93-hue/tars-cli.git
+pip3 install git+https://github.com/orathore93-hue/tars-cli.git
 ```
 
 **That's it.** No complex setup, no YAML hell, no configuration files.

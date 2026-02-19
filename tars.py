@@ -19,8 +19,7 @@ app = typer.Typer(
     no_args_is_help=False
 )
 
-TARS_ASCII = """
-[bold cyan]
+TARS_ASCII = """[bold cyan]
     ╔════════════════════════════════════════════════════════════╗
     ║                                                            ║
     ║  ████████╗     █████╗     ██████╗     ███████╗           ║
@@ -30,22 +29,21 @@ TARS_ASCII = """
     ║     ██║   ██  ██║  ██║    ██║  ██║    ███████║           ║
     ║     ╚═╝   ╚═  ╚═╝  ╚═╝    ╚═╝  ╚═╝    ╚══════╝           ║
     ║                                                            ║
-    ║    [bold yellow]Technical Assistance & Reliability System[/bold yellow]       ║
+    ║    [/bold cyan][bold yellow]Technical Assistance & Reliability System[/bold yellow][bold cyan]       ║
     ║                                                            ║
-    ║         [dim]"Humor setting: 90%. Let's do this."[/dim]           ║
+    ║         [/bold cyan][dim]"Humor setting: 90%. Let's do this."[/dim][bold cyan]           ║
     ║                                                            ║
     ╚════════════════════════════════════════════════════════════╝
-[/bold cyan]
-"""
+[/bold cyan]"""
 
 TARS_ROBOT = """[bold cyan]
         ╔═══════════════════════════════════╗
         ║   ┌─────────────────────────┐   ║
         ║   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │   ║
-        ║   │  ▓ [bold yellow]◉[/bold yellow]  TARS  [bold yellow]◉[/bold yellow]  ▓  │   ║
+        ║   │  ▓ [/bold cyan][bold yellow]◉[/bold yellow][bold cyan]  TARS  [/bold cyan][bold yellow]◉[/bold yellow][bold cyan]  ▓  │   ║
         ║   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │   ║
-        ║   │  ▓  [bold green]═══════════[/bold green]  ▓  │   ║
-        ║   │  ▓  [bold green]═══════════[/bold green]  ▓  │   ║
+        ║   │  ▓  [/bold cyan][bold green]═══════════[/bold green][bold cyan]  ▓  │   ║
+        ║   │  ▓  [/bold cyan][bold green]═══════════[/bold green][bold cyan]  ▓  │   ║
         ║   │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  │   ║
         ║   └─────────────────────────┘   ║
         ║         ║           ║           ║
@@ -83,7 +81,7 @@ def show_welcome():
     console.clear()
     console.print(TARS_ASCII)
     console.print(TARS_ROBOT)
-    console.print(f"\n[bold green]TARS:[/bold cyan] [italic]{random.choice(WELCOME_MESSAGES)}[/italic]")
+    console.print(f"\n[bold green]TARS:[/bold green] [italic]{random.choice(WELCOME_MESSAGES)}[/italic]")
     console.print("[dim italic]Your companion while you Kubersnaut.[/dim italic]\n")
     
     # What TARS does
