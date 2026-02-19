@@ -834,7 +834,7 @@ def crds():
     """List Custom Resource Definitions"""
     try:
         config.load_kube_config()
-        api_client = client.ApiextensionsV1Api()
+        api_client = k8s_client.ApiextensionsV1Api()
         
         crds = api_client.list_custom_resource_definition()
         
@@ -1179,7 +1179,15 @@ def prom_check(url: str = typer.Option(None, help="Prometheus URL")):
             console.print(f"[bold red]✗[/bold red] Cannot connect to Prometheus at {prom_url}")
             
     except Exception as e:
-        console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
+        console.print(f"[bold red]✗[/bold red] Error: {str(e)}\n", markup=False)
+        console.print("[yellow]💡 Troubleshooting:[/yellow]")
+        console.print("  1. Start Prometheus locally on port 9090")
+        console.print("  2. Set PROMETHEUS_URL environment variable:")
+        console.print("     [cyan]export PROMETHEUS_URL=http://your-prometheus:9090[/cyan]")
+        console.print("  3. Port-forward if Prometheus is in Kubernetes:")
+        console.print("     [cyan]kubectl port-forward -n monitoring svc/prometheus 9090:9090[/cyan]")
+        console.print("  4. Use custom URL:")
+        console.print("     [cyan]tars prom-check --url http://your-prometheus:9090[/cyan]")
 
 @app.command()
 def prom_metrics(
@@ -1674,8 +1682,9 @@ def network(namespace: str = typer.Option("default", help="Namespace")):
                         selector[:50]
                     )
                     issues += 1
-            except:
-                pass
+            except Exception:
+                # Silently skip services that can't be checked
+                continue
         
         if issues > 0:
             console.print(table)
@@ -1687,8 +1696,9 @@ def network(namespace: str = typer.Option("default", help="Namespace")):
         try:
             policies = networking_v1.list_namespaced_network_policy(namespace)
             console.print(f"\n[bold cyan]Network Policies:[/bold cyan] {len(policies.items)}")
-        except:
-            pass
+        except Exception:
+            # Network policies may not be available in all clusters
+            console.print("\n[dim]Network policies not available[/dim]")
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
@@ -1733,8 +1743,9 @@ def quota(namespace: str = typer.Option("default", help="Namespace")):
                             elif percentage > 75:
                                 status = "⚠ HIGH"
                                 status_color = "yellow"
-                    except:
-                        pass
+                    except (ValueError, ZeroDivisionError):
+                        # Skip resources with invalid quota values
+                        continue
                     
                     table.add_row(
                         resource,
@@ -1833,8 +1844,11 @@ def rollback(deployment: str, namespace: str = typer.Option("default", help="Nam
         console.print(f"[bold green]TARS:[/bold green] rolling back {deployment}...")
         
         # Get rollout history
-        result = os.popen(f"kubectl rollout history deployment/{deployment} -n {namespace}").read()
-        console.print(f"\n[dim]{result}[/dim]")
+        result = subprocess.run(
+            ["kubectl", "rollout", "history", f"deployment/{deployment}", "-n", namespace],
+            capture_output=True, text=True
+        )
+        console.print(f"\n[dim]{result.stdout}[/dim]")
         
         confirm = typer.confirm(f"Rollback {deployment} to previous revision?")
         if not confirm:
@@ -1842,7 +1856,7 @@ def rollback(deployment: str, namespace: str = typer.Option("default", help="Nam
             return
         
         # Perform rollback
-        os.system(f"kubectl rollout undo deployment/{deployment} -n {namespace}")
+        subprocess.run(["kubectl", "rollout", "undo", f"deployment/{deployment}", "-n", namespace])
         console.print(f"\n[bold green]✓[/bold green] Rollback initiated for {deployment}")
         
     except Exception as e:
@@ -1863,7 +1877,7 @@ def drain(node_name: str):
             return
         
         console.print(f"[bold green]TARS:[/bold green] draining node {node_name}...")
-        os.system(f"kubectl drain {node_name} --ignore-daemonsets --delete-emptydir-data")
+        subprocess.run(["kubectl", "drain", node_name, "--ignore-daemonsets", "--delete-emptydir-data"])
         
         console.print(f"\n[bold green]✓[/bold green] Node {node_name} drained successfully")
         console.print(f"[bold cyan]Tip: Use 'kubectl uncordon {node_name}' to make it schedulable again[/bold cyan]")
@@ -1878,7 +1892,7 @@ def cordon(node_name: str):
         config.load_kube_config()
         
         console.print(f"[bold green]TARS:[/bold green] cordoning node {node_name}...")
-        os.system(f"kubectl cordon {node_name}")
+        subprocess.run(["kubectl", "cordon", node_name])
         
         console.print(f"[bold green]✓[/bold green] Node {node_name} marked unschedulable")
         
@@ -1892,7 +1906,7 @@ def uncordon(node_name: str):
         config.load_kube_config()
         
         console.print(f"[bold green]TARS:[/bold green] uncordoning node {node_name}...")
-        os.system(f"kubectl uncordon {node_name}")
+        subprocess.run(["kubectl", "uncordon", node_name])
         
         console.print(f"[bold green]✓[/bold green] Node {node_name} marked schedulable")
         
@@ -1906,7 +1920,7 @@ def exec(pod_name: str, namespace: str = typer.Option("default", help="Namespace
         config.load_kube_config()
         
         console.print(f"[bold green]TARS:[/bold green] executing in {pod_name}...")
-        os.system(f"kubectl exec -it {pod_name} -n {namespace} -- {command}")
+        subprocess.run(["kubectl", "exec", "-it", pod_name, "-n", namespace, "--", command])
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
@@ -1919,7 +1933,7 @@ def port_forward(pod_name: str, ports: str, namespace: str = typer.Option("defau
         
         console.print(f"[bold green]TARS:[/bold green] forwarding ports {ports} to {pod_name}...")
         console.print("[dim]Press Ctrl+C to stop[/dim]\n")
-        os.system(f"kubectl port-forward {pod_name} {ports} -n {namespace}")
+        subprocess.run(["kubectl", "port-forward", pod_name, ports, "-n", namespace])
         
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error:", str(e), markup=False)
@@ -1961,16 +1975,16 @@ def context():
         config.load_kube_config()
         
         console.print("[bold cyan]Available Contexts:[/bold cyan]\n")
-        os.system("kubectl config get-contexts")
+        subprocess.run(["kubectl", "config", "get-contexts"])
         
         console.print("\n[bold cyan]Current Context:[/bold cyan]")
-        current = os.popen("kubectl config current-context").read().strip()
-        console.print(current)
+        result = subprocess.run(["kubectl", "config", "current-context"], capture_output=True, text=True)
+        console.print(result.stdout.strip())
         
         switch = typer.confirm("\nSwitch context?")
         if switch:
             context_name = typer.prompt("Enter context name")
-            os.system(f"kubectl config use-context {context_name}")
+            subprocess.run(["kubectl", "config", "use-context", context_name])
             console.print(f"[bold green]✓[/bold green] Switched to {context_name}\n")
             
             # Instant health check and insights
