@@ -23,12 +23,12 @@ class AIAnalyzer:
         if self.api_key:
             try:
                 self.client = genai.Client(api_key=self.api_key)
-                logger.info("Gemini client initialized successfully")
+                logger.debug("Gemini client initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini client: {e}")
                 raise GeminiAPIError(f"Gemini initialization failed: {e}")
         else:
-            logger.warning("GEMINI_API_KEY not set - AI features disabled")
+            logger.debug("GEMINI_API_KEY not set - AI features disabled")
     
     def is_available(self) -> bool:
         """Check if AI analysis is available"""

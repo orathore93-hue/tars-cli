@@ -37,7 +37,7 @@ def print_warning(message: str):
 
 def print_info(message: str):
     """Print info message"""
-    console.print(f"[cyan]ℹ[/cyan] {message}")
+    console.print(f"{message}")
     logger.info(message)
 
 

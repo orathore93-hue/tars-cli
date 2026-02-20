@@ -25,8 +25,6 @@ class MonitoringCommands:
     def health_check(self, namespace: Optional[str] = None):
         """Check cluster health - delegates to API and output layers"""
         try:
-            print_info("Running health diagnostics...")
-            
             # Get data from API (no output here)
             nodes = self.k8s.list_nodes()
             pods = self.k8s.list_pods(namespace)
@@ -41,9 +39,9 @@ class MonitoringCommands:
             if analyzer.is_available():
                 try:
                     analysis = analyzer.analyze_cluster_health(health_metrics)
-                    print_info(f"AI Analysis: {analysis}")
+                    console.print(f"\n[dim]AI Analysis: {analysis}[/dim]")
                 except GeminiAPIError as e:
-                    print_warning(f"AI analysis unavailable: {e}")
+                    logger.debug(f"AI analysis unavailable: {e}")
             
         except Exception as e:
             print_error(f"Health check failed: {e}")
@@ -75,8 +73,6 @@ class MonitoringCommands:
                 print_error(f"Invalid namespace: {namespace}")
                 return
             
-            print_info(f"Diagnosing {pod_name}...")
-            
             # Get data from API
             pod = self.k8s.get_pod(pod_name, namespace)
             
@@ -88,9 +84,9 @@ class MonitoringCommands:
                 try:
                     pod_data = self._extract_pod_data(pod)
                     analysis = analyzer.analyze_pod_issue(pod_data)
-                    console.print(f"\n[bold cyan]AI Analysis:[/bold cyan]\n{analysis}")
+                    console.print(f"\n[bold]Analysis:[/bold]\n{analysis}")
                 except GeminiAPIError as e:
-                    print_warning(f"AI analysis failed: {e}")
+                    logger.debug(f"AI analysis failed: {e}")
         
         except Exception as e:
             print_error(f"Diagnosis failed: {e}")
@@ -173,7 +169,7 @@ class MonitoringCommands:
         console.print(table)
         
         if len(pods) > 50:
-            print_info(f"Showing 50 of {len(pods)} pods")
+            console.print(f"\n[dim]Showing 50 of {len(pods)} pods[/dim]")
     
     def _display_pod_info(self, pod):
         """Display pod information"""
