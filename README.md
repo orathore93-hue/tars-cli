@@ -402,7 +402,6 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by the TARS robot from Interstellar
 - Built for the SRE community
 - Powered by Google Gemini AI
 
