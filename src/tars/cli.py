@@ -792,6 +792,44 @@ def creator():
 
 
 @app.command()
+def welcome():
+    """Show TARS welcome screen"""
+    import random
+    from rich.panel import Panel
+    
+    quotes = [
+        "Humor setting at 90%. Let's do this.",
+        "I'm ready to monitor your cluster.",
+        "TARS online. Let's see what's broken today.",
+        "Ready to analyze your Kubernetes cluster.",
+        "Cluster monitoring active. Try not to break anything.",
+    ]
+    
+    console.clear()
+    console.print(TARS_BANNER)
+    console.print(f"\n[bold green]TARS:[/bold green] [italic]{random.choice(quotes)}[/italic]")
+    console.print("[dim italic]Your companion while you Kubersnaut.[/dim italic]\n")
+    
+    info_panel = """[bold yellow]What I Do:[/bold yellow]
+• Monitor Kubernetes clusters (GKE/EKS/AKS) in real-time
+• Detect issues: CrashLoops, OOM kills, pending pods, resource spikes
+• AI-powered analysis with Gemini for troubleshooting
+• On-call engineer toolkit for incident response
+• Prevent downtime with proactive monitoring
+
+[bold yellow]Quick Start:[/bold yellow]
+  [cyan]tars setup[/cyan]      - Verify installation and configuration
+  [cyan]tars health[/cyan]     - Check cluster health
+  [cyan]tars triage[/cyan]     - Quick incident overview
+  [cyan]tars watch[/cyan]      - Real-time pod monitoring
+  [cyan]tars god[/cyan]        - God mode (SRE power commands)
+"""
+    
+    console.print(Panel(info_panel, border_style="cyan", padding=(0, 2)))
+    console.print("\n[dim]Created by Omer Rathore | Type 'tars --help' for all commands[/dim]\n")
+
+
+@app.command()
 def dashboard(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
     """Launch interactive dashboard"""
     try:
