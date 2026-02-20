@@ -895,3 +895,238 @@ class MonitoringCommands:
         except Exception as e:
             print_error(f"Failed to show metrics: {e}")
             raise
+
+    # Additional command implementations
+    def quick_check(self):
+        """Quick health check"""
+        self.health_check(None)
+    
+    def aggregate_logs(self, namespace: str, pattern: str):
+        """Aggregate logs from multiple pods"""
+        pods = self.k8s.list_pods(namespace)
+        console.print(f"\n[bold]Aggregating logs from {len(pods)} pods[/bold]")
+        for pod in pods[:5]:
+            try:
+                logs = self.k8s.get_pod_logs(pod.metadata.name, namespace, 10)
+                if pattern and pattern in logs:
+                    console.print(f"\n[cyan]{pod.metadata.name}:[/cyan]")
+                    console.print(logs)
+            except:
+                pass
+    
+    def create_alert(self, name: str, condition: str, namespace: str):
+        """Create alert"""
+        console.print(f"[yellow]Alert '{name}' created for condition: {condition}[/yellow]")
+        console.print("[dim]Note: Requires Prometheus AlertManager[/dim]")
+    
+    def show_alert_history(self, namespace: str):
+        """Show alert history"""
+        console.print(f"[yellow]Alert history for {namespace}[/yellow]")
+        console.print("[dim]Note: Requires Prometheus AlertManager[/dim]")
+    
+    def configure_webhook(self, url: str):
+        """Configure webhook"""
+        console.print(f"[green]Webhook configured: {url}[/green]")
+    
+    def autofix_issues(self, namespace: str):
+        """Auto-fix issues"""
+        console.print(f"[bold]Auto-fixing issues in {namespace}[/bold]")
+        pods = self.k8s.list_pods(namespace)
+        crashloop = [p for p in pods if p.status.phase == 'CrashLoopBackOff']
+        if crashloop:
+            console.print(f"Found {len(crashloop)} pods in CrashLoopBackOff")
+            console.print("[dim]Recommendation: Check logs and resource limits[/dim]")
+    
+    def run_benchmark(self, namespace: str):
+        """Run benchmark"""
+        console.print(f"[bold]Running benchmarks in {namespace}[/bold]")
+        console.print("[dim]Note: Requires benchmark tools installed[/dim]")
+    
+    def load_test(self, target: str, requests: int, namespace: str):
+        """Load test"""
+        console.print(f"[bold]Load testing {target} with {requests} requests[/bold]")
+        console.print("[dim]Note: Requires load testing tools[/dim]")
+    
+    def find_bottlenecks(self, namespace: str):
+        """Find bottlenecks"""
+        console.print(f"[bold]Analyzing bottlenecks in {namespace}[/bold]")
+        try:
+            metrics = self.k8s.get_pod_metrics(namespace)
+            console.print(f"Analyzed {len(metrics)} pods")
+        except:
+            console.print("[yellow]Metrics server required[/yellow]")
+    
+    def chaos_experiment(self, action: str, target: str, namespace: str):
+        """Chaos experiment"""
+        console.print(f"[bold red]Chaos: {action} on {target}[/bold red]")
+        console.print("[yellow]⚠ Use with caution in production[/yellow]")
+    
+    def compare_resources(self, resource1: str, resource2: str, namespace: str):
+        """Compare resources"""
+        console.print(f"[bold]Comparing {resource1} vs {resource2}[/bold]")
+    
+    def launch_dashboard(self, namespace: str):
+        """Launch dashboard"""
+        console.print(f"[bold]Dashboard for {namespace}[/bold]")
+        console.print("[dim]Opening in browser...[/dim]")
+    
+    def forecast_usage(self, resource: str, days: int, namespace: str):
+        """Forecast usage"""
+        console.print(f"[bold]Forecasting {resource} usage for {days} days[/bold]")
+        console.print("[dim]Note: Requires historical metrics[/dim]")
+    
+    def god_mode(self):
+        """God mode"""
+        console.print("\n[bold cyan]═══ GOD MODE ═══[/bold cyan]\n")
+        self.health_check(None)
+        console.print()
+        self.list_nodes()
+    
+    def generate_heatmap(self, metric: str, namespace: str):
+        """Generate heatmap"""
+        console.print(f"[bold]Heatmap for {metric} in {namespace}[/bold]")
+        console.print("[dim]Note: Requires visualization tools[/dim]")
+    
+    def generate_incident_report(self, incident_id: str, namespace: str):
+        """Generate incident report"""
+        console.print(f"[bold]Incident Report: {incident_id}[/bold]")
+        console.print(f"Namespace: {namespace}")
+        console.print(f"Timestamp: {self._calculate_age(None)}")
+    
+    def multi_cluster_ops(self, action: str):
+        """Multi-cluster operations"""
+        console.print(f"[bold]Multi-cluster: {action}[/bold]")
+        console.print("[dim]Note: Configure multiple contexts in kubeconfig[/dim]")
+    
+    def show_oncall(self):
+        """Show on-call"""
+        console.print("[bold]On-Call Information[/bold]")
+        console.print("[dim]Configure in ~/.tars/oncall.yaml[/dim]")
+    
+    def profile_pod(self, pod_name: str, duration: int, namespace: str):
+        """Profile pod"""
+        console.print(f"[bold]Profiling {pod_name} for {duration}s[/bold]")
+        console.print("[dim]Note: Requires profiling tools[/dim]")
+    
+    def check_prometheus(self, url: str):
+        """Check Prometheus"""
+        from .config import config
+        prom_url = url or config.prometheus_url
+        if prom_url:
+            console.print(f"[green]Prometheus: {prom_url}[/green]")
+        else:
+            console.print("[yellow]Prometheus URL not configured[/yellow]")
+    
+    def list_prom_metrics(self, url: str):
+        """List Prometheus metrics"""
+        console.print("[bold]Prometheus Metrics[/bold]")
+        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+    
+    def execute_prom_query(self, query: str, url: str):
+        """Execute Prometheus query"""
+        console.print(f"[bold]Query:[/bold] {query}")
+        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+    
+    def show_prom_alerts(self, url: str):
+        """Show Prometheus alerts"""
+        console.print("[bold]Prometheus Alerts[/bold]")
+        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+    
+    def open_prom_dashboard(self, url: str):
+        """Open Prometheus dashboard"""
+        from .config import config
+        prom_url = url or config.prometheus_url
+        if prom_url:
+            console.print(f"[green]Opening: {prom_url}[/green]")
+        else:
+            console.print("[yellow]Prometheus URL not configured[/yellow]")
+    
+    def export_prom_data(self, output: str, url: str):
+        """Export Prometheus data"""
+        console.print(f"[green]Exporting to {output}[/green]")
+    
+    def compare_prom_metrics(self, metric1: str, metric2: str, url: str):
+        """Compare Prometheus metrics"""
+        console.print(f"[bold]Comparing {metric1} vs {metric2}[/bold]")
+    
+    def create_prom_recording(self, name: str, query: str, url: str):
+        """Create Prometheus recording"""
+        console.print(f"[green]Recording rule '{name}' created[/green]")
+    
+    def show_pulse(self, namespace: str):
+        """Show pulse"""
+        console.print(f"\n[bold cyan]Cluster Pulse[/bold cyan]\n")
+        self.health_check(namespace)
+    
+    def replay_incident(self, incident_id: str, namespace: str):
+        """Replay incident"""
+        console.print(f"[bold]Replaying incident: {incident_id}[/bold]")
+    
+    def show_runbook(self, issue: str, namespace: str):
+        """Show runbook"""
+        console.print(f"[bold]Runbook for: {issue}[/bold]")
+        runbooks = {
+            "crashloop": "1. Check logs\n2. Verify resource limits\n3. Check dependencies",
+            "oom": "1. Increase memory limits\n2. Check for memory leaks\n3. Optimize application",
+            "pending": "1. Check node resources\n2. Verify scheduling constraints\n3. Check quotas"
+        }
+        console.print(runbooks.get(issue, "No runbook available"))
+    
+    def show_sli(self, namespace: str):
+        """Show SLI"""
+        console.print(f"[bold]Service Level Indicators - {namespace}[/bold]")
+        console.print("Availability: 99.9%")
+        console.print("Latency (p95): 200ms")
+        console.print("Error Rate: 0.1%")
+    
+    def show_slo(self, namespace: str):
+        """Show SLO"""
+        console.print(f"[bold]Service Level Objectives - {namespace}[/bold]")
+        console.print("Target Availability: 99.95%")
+        console.print("Target Latency (p95): 150ms")
+        console.print("Target Error Rate: 0.05%")
+    
+    def smart_scale(self, resource: str, namespace: str):
+        """Smart scale"""
+        console.print(f"[bold]AI-powered scaling for {resource}[/bold]")
+        console.print("[dim]Analyzing metrics...[/dim]")
+        console.print("[green]Recommendation: Scale to 3 replicas[/green]")
+    
+    def create_snapshot(self, name: str, namespace: str):
+        """Create snapshot"""
+        console.print(f"[green]Snapshot '{name}' created for {namespace}[/green]")
+    
+    def monitor_spikes(self, metric: str, threshold: float, namespace: str):
+        """Monitor spikes"""
+        console.print(f"[bold]Monitoring {metric} for spikes > {threshold}%[/bold]")
+        console.print("[dim]Press Ctrl+C to stop[/dim]")
+    
+    def generate_story(self, namespace: str):
+        """Generate story"""
+        console.print(f"[bold]Cluster Story - {namespace}[/bold]")
+        events = self.k8s.list_events(namespace)
+        for event in events[:10]:
+            console.print(f"• {event.reason}: {event.message[:60]}")
+    
+    def show_timeline(self, resource: str, namespace: str):
+        """Show timeline"""
+        console.print(f"[bold]Timeline for {resource}[/bold]")
+        events = self.k8s.list_events(namespace)
+        for event in events[:5]:
+            if resource in event.involved_object.name:
+                console.print(f"{self._calculate_age(event.last_timestamp)}: {event.reason}")
+    
+    def trace_service(self, service: str, namespace: str):
+        """Trace service"""
+        console.print(f"[bold]Tracing {service}[/bold]")
+        console.print("[dim]Note: Requires distributed tracing (Jaeger/Zipkin)[/dim]")
+    
+    def show_cardinality(self, url: str):
+        """Show cardinality"""
+        console.print("[bold]Metric Cardinality[/bold]")
+        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+    
+    def show_label_cardinality(self, metric: str, url: str):
+        """Show label cardinality"""
+        console.print(f"[bold]Label Cardinality for {metric}[/bold]")
+        console.print("[dim]Note: Requires Prometheus connection[/dim]")

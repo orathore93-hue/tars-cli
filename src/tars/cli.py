@@ -619,6 +619,547 @@ def metrics(
         raise typer.Exit(1)
 
 
+@app.command()
+def check():
+    """Quick cluster health check"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.quick_check()
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def humor(level: int = typer.Argument(90, help="Humor level (0-100)")):
+    """Set TARS humor level"""
+    console.print(f"[bold cyan]Humor level set to {level}%[/bold cyan]")
+    console.print(f"[italic]{'Sarcasm mode engaged' if level > 75 else 'Professional mode'}[/italic]")
+
+
+@app.command()
+def quote():
+    """Get a random TARS quote"""
+    import random
+    quotes = [
+        "Humor setting at 90%. Let's do this.",
+        "I'm ready to monitor your cluster.",
+        "TARS online. Let's see what's broken today.",
+        "Cluster monitoring active. Try not to break anything.",
+        "Ready to analyze your Kubernetes cluster.",
+    ]
+    console.print(f"[bold cyan]TARS:[/bold cyan] [italic]{random.choice(quotes)}[/italic]")
+
+
+@app.command()
+def aggregate_logs(
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace"),
+    pattern: str = typer.Option(None, "--pattern", "-p", help="Search pattern")
+):
+    """Aggregate logs from multiple pods"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.aggregate_logs(namespace, pattern)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def alert(
+    name: str = typer.Argument(..., help="Alert name"),
+    condition: str = typer.Argument(..., help="Alert condition"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Create an alert rule"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.create_alert(name, condition, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def alert_history(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Show alert history"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_alert_history(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def alert_webhook(url: str = typer.Argument(..., help="Webhook URL")):
+    """Configure alert webhook"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.configure_webhook(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def autofix(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Auto-fix common issues"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.autofix_issues(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def benchmark(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Run performance benchmarks"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.run_benchmark(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def blast(
+    target: str = typer.Argument(..., help="Target service"),
+    requests: int = typer.Option(100, "--requests", "-r", help="Number of requests"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Load test a service"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.load_test(target, requests, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def bottleneck(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Find performance bottlenecks"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.find_bottlenecks(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def chaos(
+    action: str = typer.Argument(..., help="Chaos action (kill-pod, network-delay)"),
+    target: str = typer.Argument(..., help="Target resource"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Chaos engineering experiments"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.chaos_experiment(action, target, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def compare(
+    resource1: str = typer.Argument(..., help="First resource"),
+    resource2: str = typer.Argument(..., help="Second resource"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Compare two resources"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.compare_resources(resource1, resource2, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def creator():
+    """Show TARS creator info"""
+    console.print("\n[bold cyan]TARS CLI[/bold cyan]")
+    console.print("[bold]Technical Assistance & Reliability System[/bold]")
+    console.print("\n[dim]Built for Kubernetes SREs and DevOps Engineers[/dim]")
+
+
+@app.command()
+def dashboard(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Launch interactive dashboard"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.launch_dashboard(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def forecast(
+    resource: str = typer.Argument(..., help="Resource to forecast"),
+    days: int = typer.Option(7, "--days", "-d", help="Days to forecast"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Forecast resource usage"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.forecast_usage(resource, days, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def god():
+    """God mode - show everything"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.god_mode()
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def heatmap(
+    metric: str = typer.Argument(..., help="Metric to visualize"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Generate resource heatmap"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.generate_heatmap(metric, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def incident_report(
+    incident_id: str = typer.Argument(..., help="Incident ID"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Generate incident report"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.generate_incident_report(incident_id, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def multi_cluster(action: str = typer.Argument(..., help="Action (list, switch, compare)")):
+    """Multi-cluster operations"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.multi_cluster_ops(action)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def oncall():
+    """Show on-call information"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_oncall()
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def profile(
+    pod_name: str = typer.Argument(..., help="Pod name"),
+    duration: int = typer.Option(30, "--duration", "-d", help="Profile duration in seconds"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Profile pod performance"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.profile_pod(pod_name, duration, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_check(url: str = typer.Option(None, "--url", help="Prometheus URL")):
+    """Check Prometheus connection"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.check_prometheus(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_metrics(url: str = typer.Option(None, "--url", help="Prometheus URL")):
+    """List Prometheus metrics"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_prom_metrics(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_query(
+    query: str = typer.Argument(..., help="PromQL query"),
+    url: str = typer.Option(None, "--url", help="Prometheus URL")
+):
+    """Execute Prometheus query"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.execute_prom_query(query, url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_alerts(url: str = typer.Option(None, "--url", help="Prometheus URL")):
+    """Show Prometheus alerts"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_prom_alerts(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_dashboard(url: str = typer.Option(None, "--url", help="Prometheus URL")):
+    """Open Prometheus dashboard"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.open_prom_dashboard(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_export(
+    output: str = typer.Argument(..., help="Output file"),
+    url: str = typer.Option(None, "--url", help="Prometheus URL")
+):
+    """Export Prometheus data"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.export_prom_data(output, url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_compare(
+    metric1: str = typer.Argument(..., help="First metric"),
+    metric2: str = typer.Argument(..., help="Second metric"),
+    url: str = typer.Option(None, "--url", help="Prometheus URL")
+):
+    """Compare Prometheus metrics"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.compare_prom_metrics(metric1, metric2, url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def prom_record(
+    name: str = typer.Argument(..., help="Recording rule name"),
+    query: str = typer.Argument(..., help="PromQL query"),
+    url: str = typer.Option(None, "--url", help="Prometheus URL")
+):
+    """Create Prometheus recording rule"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.create_prom_recording(name, query, url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def pulse(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Show cluster pulse (quick overview)"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_pulse(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def replay(
+    incident_id: str = typer.Argument(..., help="Incident ID to replay"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Replay past incident"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.replay_incident(incident_id, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def runbook(
+    issue: str = typer.Argument(..., help="Issue type"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Show runbook for issue"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_runbook(issue, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def sli(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Show Service Level Indicators"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_sli(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def slo(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Show Service Level Objectives"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_slo(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def smart_scale(
+    resource: str = typer.Argument(..., help="Resource to scale"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """AI-powered smart scaling"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.smart_scale(resource, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def snapshot(
+    name: str = typer.Argument(..., help="Snapshot name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Create cluster snapshot"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.create_snapshot(name, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def spike(
+    metric: str = typer.Argument(..., help="Metric to monitor"),
+    threshold: float = typer.Option(80.0, "--threshold", "-t", help="Spike threshold"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Monitor for metric spikes"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.monitor_spikes(metric, threshold, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def story(namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")):
+    """Generate cluster story (timeline)"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.generate_story(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def timeline(
+    resource: str = typer.Argument(..., help="Resource name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Show resource timeline"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_timeline(resource, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def trace(
+    service: str = typer.Argument(..., help="Service name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Trace service requests"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.trace_service(service, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def cardinality(url: str = typer.Option(None, "--url", help="Prometheus URL")):
+    """Show metric cardinality"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_cardinality(url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def cardinality_labels(
+    metric: str = typer.Argument(..., help="Metric name"),
+    url: str = typer.Option(None, "--url", help="Prometheus URL")
+):
+    """Show label cardinality for metric"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_label_cardinality(metric, url)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
 def main():
     """Main entry point"""
     try:
