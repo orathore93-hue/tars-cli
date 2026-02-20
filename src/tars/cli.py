@@ -42,7 +42,7 @@ console = Console()
 
 
 @app.command()
-def health(namespace: Optional[str] = None):
+def health(namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="Filter by namespace")):
     """Check cluster health"""
     try:
         cmd = MonitoringCommands()
@@ -53,8 +53,8 @@ def health(namespace: Optional[str] = None):
 
 
 @app.command()
-def pods(namespace: Optional[str] = None):
-    """List pods"""
+def pods(namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="Filter by namespace")):
+    """List pods with status and resource usage"""
     try:
         cmd = MonitoringCommands()
         cmd.list_pods(namespace)
@@ -65,10 +65,10 @@ def pods(namespace: Optional[str] = None):
 
 @app.command()
 def diagnose(
-    pod_name: str = typer.Argument(..., help="Pod name to diagnose"),
-    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+    pod_name: str = typer.Argument(..., help="Name of the pod to diagnose"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
 ):
-    """Diagnose pod issues with AI"""
+    """Diagnose pod issues and get AI-powered recommendations"""
     try:
         cmd = MonitoringCommands()
         cmd.diagnose_pod(pod_name, namespace)
