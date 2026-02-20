@@ -92,7 +92,7 @@ jobs:
 
       # Upload binary and checksum to GitHub Release
       - name: Upload release assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/${{ matrix.asset_name }}
