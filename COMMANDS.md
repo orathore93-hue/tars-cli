@@ -1,6 +1,6 @@
 # TARS CLI - Complete Command Reference
 
-**Total Commands: 88**
+**Total Commands: 92**
 
 ## Core Monitoring (10)
 - `health` - Check cluster health
@@ -28,7 +28,7 @@
 - `trace` - Trace service requests
 - `bottleneck` - Find performance bottlenecks
 
-## Resource Management (15)
+## Resource Management (19)
 - `deployments` - List deployments
 - `services` - List services
 - `namespaces` - List all namespaces
@@ -44,6 +44,10 @@
 - `scale` - Scale a deployment or statefulset
 - `rollback` - Rollback a deployment or statefulset
 - `history` - Show rollout history
+- `apply` - Apply YAML file to cluster
+- `create` - Create resources from YAML file
+- `delete` - Delete resources (supports --file/-f)
+- `diff` - Show diff between live and file
 
 ## Node Operations (4)
 - `cordon` - Cordon a node (mark unschedulable)
@@ -135,6 +139,13 @@ tars triage -n production
 tars scale deployment my-app 5 -n production
 tars restart deployment my-app -n production
 
+# YAML operations
+tars apply deployment.yaml --dry-run
+tars apply deployment.yaml -n production
+tars create service.yaml
+tars delete -f deployment.yaml
+tars diff deployment my-app deployment.yaml
+
 # Security & compliance
 tars security-scan -n production
 tars compliance -n default
@@ -152,6 +163,48 @@ tars runbook crashloop
 tars humor 95
 tars quote
 tars god
+```
+
+## YAML File Operations
+
+### Apply Resources
+```bash
+# Dry run (preview)
+tars apply deployment.yaml --dry-run
+
+# Apply to cluster
+tars apply deployment.yaml
+
+# Override namespace
+tars apply deployment.yaml -n production
+
+# Multi-document YAML
+tars apply app-stack.yaml
+```
+
+### Create Resources
+```bash
+# Create from file
+tars create deployment.yaml
+
+# With namespace override
+tars create service.yaml -n staging
+```
+
+### Delete Resources
+```bash
+# Delete from YAML file
+tars delete -f deployment.yaml
+
+# With namespace override
+tars delete -f resources.yaml -n production
+```
+
+### Compare Resources
+```bash
+# Show diff between live and file
+tars diff deployment my-app deployment.yaml
+tars diff service api-service service.yaml -n production
 ```
 
 ## AI-Powered Features

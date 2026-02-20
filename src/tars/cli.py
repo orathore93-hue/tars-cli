@@ -601,6 +601,57 @@ def diff(
 
 
 @app.command()
+def apply(
+    file_path: str = typer.Argument(..., help="YAML file to apply"),
+    namespace: str = typer.Option(None, "--namespace", "-n", help="Override namespace"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without applying")
+):
+    """Apply YAML file to cluster"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.apply_yaml_file(file_path, namespace, dry_run)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def create(
+    file_path: str = typer.Argument(..., help="YAML file to create from"),
+    namespace: str = typer.Option(None, "--namespace", "-n", help="Override namespace")
+):
+    """Create resources from YAML file"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.apply_yaml_file(file_path, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def delete(
+    resource: str = typer.Argument(None, help="Resource to delete (e.g., pod/name)"),
+    file: str = typer.Option(None, "--file", "-f", help="Delete from YAML file"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Delete resources"""
+    try:
+        cmd = MonitoringCommands()
+        if file:
+            cmd.delete_from_yaml_file(file, namespace)
+        elif resource:
+            print_error("Direct resource deletion not yet implemented. Use --file/-f")
+            raise typer.Exit(1)
+        else:
+            print_error("Specify resource or use --file/-f")
+            raise typer.Exit(1)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
 def history(
     resource_type: str = typer.Argument(..., help="Resource type"),
     resource_name: str = typer.Argument(..., help="Resource name"),
@@ -1226,10 +1277,9 @@ def cardinality_labels(
 def main():
     """Main entry point"""
     try:
-        # Show banner only when no arguments (just 'tars')
+        # Show welcome screen when no arguments (just 'tars')
         if len(sys.argv) == 1:
-            console.print(TARS_BANNER)
-            console.print("[dim]Run [bold]tars --help[/bold] to see all available commands[/dim]\n")
+            welcome()
             return
         
         # Show banner with help

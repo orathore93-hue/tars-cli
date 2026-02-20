@@ -1,10 +1,11 @@
 """Kubernetes API client wrapper with security and error handling"""
-from kubernetes import client, config as k8s_config
+from kubernetes import client, config as k8s_config, utils
 from kubernetes.client.rest import ApiException
 import logging
 from typing import Optional, List, Dict, Any
 from functools import wraps
 import time
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -421,4 +422,104 @@ class KubernetesClient:
             return result.stdout
         except Exception as e:
             logger.error(f"Failed to get history: {e}")
+            raise
+    
+    def apply_yaml(self, file_path: str, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Apply YAML file to cluster"""
+        try:
+            with open(file_path, 'r') as f:
+                resources = list(yaml.safe_load_all(f))
+            
+            results = []
+            for resource in resources:
+                if not resource:
+                    continue
+                
+                # Override namespace if specified
+                if namespace and 'metadata' in resource:
+                    resource['metadata']['namespace'] = namespace
+                
+                # Apply resource
+                result = utils.create_from_dict(self.api_client, resource, namespace=namespace)
+                results.append({
+                    'kind': resource.get('kind'),
+                    'name': resource.get('metadata', {}).get('name'),
+                    'namespace': resource.get('metadata', {}).get('namespace', 'default'),
+                    'status': 'created'
+                })
+            
+            return results
+        except FileNotFoundError:
+            logger.error(f"File not found: {file_path}")
+            raise
+        except yaml.YAMLError as e:
+            logger.error(f"Invalid YAML: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to apply YAML: {e}")
+            raise
+    
+    def create_from_yaml(self, file_path: str, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Create resources from YAML file (fails if exists)"""
+        return self.apply_yaml(file_path, namespace)
+    
+    def delete_from_yaml(self, file_path: str, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Delete resources defined in YAML file"""
+        try:
+            with open(file_path, 'r') as f:
+                resources = list(yaml.safe_load_all(f))
+            
+            results = []
+            for resource in resources:
+                if not resource:
+                    continue
+                
+                kind = resource.get('kind')
+                name = resource.get('metadata', {}).get('name')
+                ns = namespace or resource.get('metadata', {}).get('namespace', 'default')
+                
+                # Delete based on kind
+                try:
+                    if kind == 'Deployment':
+                        self.apps_v1.delete_namespaced_deployment(name, ns)
+                    elif kind == 'Service':
+                        self.core_v1.delete_namespaced_service(name, ns)
+                    elif kind == 'ConfigMap':
+                        self.core_v1.delete_namespaced_config_map(name, ns)
+                    elif kind == 'Secret':
+                        self.core_v1.delete_namespaced_secret(name, ns)
+                    elif kind == 'Pod':
+                        self.core_v1.delete_namespaced_pod(name, ns)
+                    elif kind == 'Ingress':
+                        self.networking_v1.delete_namespaced_ingress(name, ns)
+                    else:
+                        logger.warning(f"Unsupported kind for deletion: {kind}")
+                        continue
+                    
+                    results.append({
+                        'kind': kind,
+                        'name': name,
+                        'namespace': ns,
+                        'status': 'deleted'
+                    })
+                except ApiException as e:
+                    if e.status == 404:
+                        results.append({
+                            'kind': kind,
+                            'name': name,
+                            'namespace': ns,
+                            'status': 'not_found'
+                        })
+                    else:
+                        raise
+            
+            return results
+        except FileNotFoundError:
+            logger.error(f"File not found: {file_path}")
+            raise
+        except yaml.YAMLError as e:
+            logger.error(f"Invalid YAML: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete from YAML: {e}")
             raise

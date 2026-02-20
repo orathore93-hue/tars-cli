@@ -1405,3 +1405,136 @@ class MonitoringCommands:
                 console.print(f"[red]Failed to query Prometheus: {response.status_code}[/red]")
         except Exception as e:
             console.print(f"[red]Error querying Prometheus: {e}[/red]")
+    
+    def apply_yaml_file(self, file_path: str, namespace: Optional[str] = None, dry_run: bool = False):
+        """Apply YAML file to cluster"""
+        from pathlib import Path
+        from rich.prompt import Confirm
+        from .config import audit_log
+        
+        try:
+            # Validate file
+            path = Path(file_path)
+            if not path.exists():
+                print_error(f"File not found: {file_path}")
+                return
+            
+            if not path.suffix in ['.yaml', '.yml']:
+                print_error("File must be a YAML file (.yaml or .yml)")
+                return
+            
+            # Show preview
+            print_info(f"Applying: {file_path}")
+            if namespace:
+                print_info(f"Namespace: {namespace}")
+            
+            # Dry run preview
+            if dry_run:
+                import yaml
+                with open(file_path, 'r') as f:
+                    resources = list(yaml.safe_load_all(f))
+                
+                console.print("\n[bold cyan]Resources to apply:[/bold cyan]")
+                for resource in resources:
+                    if resource:
+                        kind = resource.get('kind', 'Unknown')
+                        name = resource.get('metadata', {}).get('name', 'unknown')
+                        ns = namespace or resource.get('metadata', {}).get('namespace', 'default')
+                        console.print(f"  • {kind}/{name} in {ns}")
+                
+                console.print("\n[yellow]Dry run - no changes made[/yellow]")
+                return
+            
+            # Confirm
+            if not Confirm.ask(f"\n[yellow]Apply {path.name} to cluster?[/yellow]"):
+                print_warning("Cancelled")
+                return
+            
+            # Apply
+            results = self.k8s.apply_yaml(file_path, namespace)
+            
+            # Display results
+            table = create_table("Applied Resources", ["Kind", "Name", "Namespace", "Status"])
+            for result in results:
+                status_color = "green" if result['status'] == 'created' else "yellow"
+                table.add_row(
+                    result['kind'],
+                    result['name'],
+                    result['namespace'],
+                    f"[{status_color}]{result['status']}[/{status_color}]"
+                )
+            
+            console.print(table)
+            print_success(f"Applied {len(results)} resource(s)")
+            
+            # Audit log
+            audit_log("apply", {
+                'file': file_path,
+                'namespace': namespace,
+                'resources': len(results)
+            })
+            
+        except Exception as e:
+            print_error(f"Failed to apply YAML: {e}")
+            logger.error(f"Apply error: {e}", exc_info=True)
+            raise
+    
+    def delete_from_yaml_file(self, file_path: str, namespace: Optional[str] = None):
+        """Delete resources from YAML file"""
+        from pathlib import Path
+        from rich.prompt import Confirm
+        from .config import audit_log
+        import yaml
+        
+        try:
+            # Validate file
+            path = Path(file_path)
+            if not path.exists():
+                print_error(f"File not found: {file_path}")
+                return
+            
+            # Show what will be deleted
+            with open(file_path, 'r') as f:
+                resources = list(yaml.safe_load_all(f))
+            
+            console.print("\n[bold red]Resources to delete:[/bold red]")
+            for resource in resources:
+                if resource:
+                    kind = resource.get('kind', 'Unknown')
+                    name = resource.get('metadata', {}).get('name', 'unknown')
+                    ns = namespace or resource.get('metadata', {}).get('namespace', 'default')
+                    console.print(f"  • {kind}/{name} in {ns}")
+            
+            # Confirm
+            if not Confirm.ask(f"\n[bold red]Delete these resources?[/bold red]"):
+                print_warning("Cancelled")
+                return
+            
+            # Delete
+            results = self.k8s.delete_from_yaml(file_path, namespace)
+            
+            # Display results
+            table = create_table("Deleted Resources", ["Kind", "Name", "Namespace", "Status"])
+            for result in results:
+                status_color = "green" if result['status'] == 'deleted' else "yellow"
+                table.add_row(
+                    result['kind'],
+                    result['name'],
+                    result['namespace'],
+                    f"[{status_color}]{result['status']}[/{status_color}]"
+                )
+            
+            console.print(table)
+            print_success(f"Deleted {len(results)} resource(s)")
+            
+            # Audit log
+            audit_log("delete_from_yaml", {
+                'file': file_path,
+                'namespace': namespace,
+                'resources': len(results)
+            })
+            
+        except Exception as e:
+            print_error(f"Failed to delete from YAML: {e}")
+            logger.error(f"Delete error: {e}", exc_info=True)
+            raise
