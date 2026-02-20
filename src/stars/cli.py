@@ -1352,3 +1352,277 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ============================================================================
+# SRE-FOCUSED COMMANDS
+# ============================================================================
+
+@app.command()
+def incident(
+    action: str = typer.Argument(..., help="Action: start, log, close, list"),
+    message: str = typer.Argument(None, help="Message for log action"),
+    title: str = typer.Option(None, "--title", "-t", help="Incident title (for start)"),
+    severity: str = typer.Option("medium", "--severity", "-s", help="Severity: low, medium, high, critical"),
+    resource: str = typer.Option(None, "--resource", "-r", help="Affected resource")
+):
+    """Incident management for on-call engineers"""
+    from .incident import IncidentManager
+    
+    try:
+        manager = IncidentManager()
+        
+        if action == "start":
+            if not title:
+                print_error("Title required for starting incident. Use --title")
+                raise typer.Exit(1)
+            manager.start_incident(title, severity)
+        
+        elif action == "log":
+            if not message:
+                print_error("Message required for logging. Usage: stars incident log 'your message'")
+                raise typer.Exit(1)
+            manager.log_action(message, resource)
+        
+        elif action == "close":
+            if not message:
+                print_error("Resolution message required. Usage: stars incident close 'resolution'")
+                raise typer.Exit(1)
+            manager.close_incident(message)
+        
+        elif action == "list":
+            manager.list_incidents()
+        
+        else:
+            print_error(f"Unknown action: {action}. Use: start, log, close, list")
+            raise typer.Exit(1)
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def blast_radius(
+    deployment: str = typer.Argument(..., help="Deployment name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
+):
+    """Analyze blast radius of deployment changes"""
+    from .sre_tools import BlastRadiusAnalyzer
+    from .k8s_client import K8sClient
+    
+    try:
+        k8s = K8sClient()
+        analyzer = BlastRadiusAnalyzer(k8s)
+        
+        blast_radius = analyzer.analyze_deployment(deployment, namespace)
+        analyzer.display_blast_radius(blast_radius)
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def fix_crashloop(
+    pod: str = typer.Argument(..., help="Pod name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace"),
+    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="Dry run mode")
+):
+    """Analyze and suggest fixes for crashloop backoff"""
+    from .sre_tools import QuickFixer
+    from .k8s_client import K8sClient
+    
+    try:
+        k8s = K8sClient()
+        fixer = QuickFixer(k8s)
+        
+        console.print(f"\n[bold]Analyzing crashloop for pod: {pod}[/bold]\n")
+        fixes = fixer.fix_crashloop(pod, namespace, dry_run)
+        
+        if fixes:
+            console.print("[bold yellow]Suggested Fixes:[/bold yellow]")
+            for i, fix in enumerate(fixes, 1):
+                console.print(f"  {i}. {fix}")
+            console.print()
+        else:
+            console.print("[green]No issues detected[/green]")
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def clear_evicted(
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace"),
+    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="Dry run mode"),
+    all_namespaces: bool = typer.Option(False, "--all-namespaces", "-A", help="All namespaces")
+):
+    """Remove all evicted pods"""
+    from .sre_tools import QuickFixer
+    from .k8s_client import K8sClient
+    from rich.prompt import Confirm
+    
+    try:
+        k8s = K8sClient()
+        fixer = QuickFixer(k8s)
+        
+        if all_namespaces:
+            console.print("[yellow]Scanning all namespaces...[/yellow]")
+            # TODO: Implement all namespaces
+            console.print("[red]All namespaces not yet implemented[/red]")
+            return
+        
+        count = fixer.clear_evicted_pods(namespace, dry_run)
+        
+        if dry_run and count > 0:
+            console.print(f"\n[yellow]Run with --apply to actually delete {count} pods[/yellow]")
+            console.print("[dim]Example: stars clear-evicted --apply[/dim]\n")
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def rollback(
+    deployment: str = typer.Argument(..., help="Deployment name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace"),
+    revision: int = typer.Option(0, "--revision", "-r", help="Revision number (0 = previous)"),
+    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="Dry run mode")
+):
+    """Rollback deployment to previous version"""
+    from .k8s_client import K8sClient
+    from .sre_tools import BlastRadiusAnalyzer, validate_resource_name, validate_namespace
+    from rich.prompt import Confirm
+    
+    if not validate_resource_name(deployment) or not validate_namespace(namespace):
+        print_error("Invalid deployment name or namespace")
+        raise typer.Exit(1)
+    
+    try:
+        k8s = K8sClient()
+        
+        # Show blast radius first
+        console.print("\n[bold yellow]⚠️  Analyzing blast radius...[/bold yellow]")
+        analyzer = BlastRadiusAnalyzer(k8s)
+        blast_radius = analyzer.analyze_deployment(deployment, namespace)
+        analyzer.display_blast_radius(blast_radius)
+        
+        if dry_run:
+            console.print(f"\n[yellow]DRY RUN: Would rollback {deployment} to revision {revision or 'previous'}[/yellow]")
+            console.print("[dim]Run with --apply to execute rollback[/dim]\n")
+            return
+        
+        # Confirm
+        if not Confirm.ask(f"\n[bold red]Rollback {deployment}?[/bold red]", default=False):
+            console.print("[yellow]Cancelled[/yellow]")
+            return
+        
+        # Execute rollback
+        console.print(f"\n[bold]Rolling back {deployment}...[/bold]")
+        
+        # Use kubectl rollback
+        import subprocess
+        cmd = ['kubectl', 'rollout', 'undo', f'deployment/{deployment}', '-n', namespace]
+        if revision > 0:
+            cmd.extend(['--to-revision', str(revision)])
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            console.print(f"[green]✓ Rollback initiated[/green]")
+            console.print(f"\n[dim]Monitor with: stars watch -n {namespace}[/dim]\n")
+        else:
+            console.print(f"[red]✗ Rollback failed: {result.stderr}[/red]")
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def oncall_report(
+    hours: int = typer.Option(8, "--hours", "-h", help="Hours to report on"),
+    namespace: str = typer.Option(None, "--namespace", "-n", help="Filter by namespace")
+):
+    """Generate on-call shift report"""
+    from .incident import IncidentManager
+    from datetime import datetime, timedelta
+    
+    try:
+        console.print(f"\n[bold]On-Call Shift Report[/bold]")
+        console.print(f"[dim]Last {hours} hours[/dim]\n")
+        
+        # Get incidents
+        manager = IncidentManager()
+        manager.list_incidents(limit=20)
+        
+        # TODO: Add more metrics
+        # - Pod restarts
+        # - Failed deployments
+        # - Resource alerts
+        # - Error rate spikes
+        
+        console.print("\n[dim]Full report generation coming soon...[/dim]\n")
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def security_scan(
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace"),
+    quick: bool = typer.Option(False, "--quick", "-q", help="Quick scan only")
+):
+    """Quick security audit of cluster resources"""
+    from .k8s_client import K8sClient
+    from rich.panel import Panel
+    
+    try:
+        k8s = K8sClient()
+        console.print("\n[bold]Security Scan[/bold]\n")
+        
+        issues = []
+        
+        # Check for privileged containers
+        console.print("[cyan]Checking for privileged containers...[/cyan]")
+        pods = k8s.list_pods(namespace)
+        for pod in pods:
+            if pod.spec.containers:
+                for container in pod.spec.containers:
+                    if container.security_context and container.security_context.privileged:
+                        issues.append(f"Privileged container: {pod.metadata.name}/{container.name}")
+        
+        # Check for host network
+        console.print("[cyan]Checking for host network usage...[/cyan]")
+        for pod in pods:
+            if pod.spec.host_network:
+                issues.append(f"Host network enabled: {pod.metadata.name}")
+        
+        # Check for missing resource limits
+        console.print("[cyan]Checking for missing resource limits...[/cyan]")
+        for pod in pods:
+            if pod.spec.containers:
+                for container in pod.spec.containers:
+                    if not container.resources or not container.resources.limits:
+                        issues.append(f"No resource limits: {pod.metadata.name}/{container.name}")
+        
+        # Display results
+        if issues:
+            console.print(f"\n[bold red]Found {len(issues)} security issues:[/bold red]\n")
+            for issue in issues[:10]:
+                console.print(f"  • {issue}")
+            if len(issues) > 10:
+                console.print(f"\n[dim]... and {len(issues) - 10} more issues[/dim]")
+        else:
+            console.print("\n[bold green]✓ No security issues found[/bold green]")
+        
+        console.print()
+    
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
