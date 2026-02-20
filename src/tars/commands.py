@@ -226,10 +226,26 @@ class MonitoringCommands:
             return f"{minutes}m"
     
     def get_pod_logs(self, pod_name: str, namespace: str, tail: int):
-        """Get pod logs"""
+        """Get pod logs and save securely"""
         try:
+            from .config import LOGS_DIR
+            import os
+            from datetime import datetime
+            
             logs = self.k8s.get_pod_logs(pod_name, namespace, tail)
-            console.print(f"\n[bold]Logs for {pod_name}[/bold] (last {tail} lines)\n")
+            
+            # Save logs securely in ~/.tars/logs/
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = LOGS_DIR / f"{pod_name}_{timestamp}.log"
+            
+            with open(log_file, 'w') as f:
+                f.write(logs)
+            
+            # Ensure secure permissions
+            os.chmod(log_file, 0o600)
+            
+            console.print(f"\n[bold]Logs for {pod_name}[/bold] (last {tail} lines)")
+            console.print(f"[dim]Saved to: {log_file}[/dim]\n")
             console.print(logs)
         except Exception as e:
             print_error(f"Failed to get logs: {e}")
@@ -992,13 +1008,59 @@ class MonitoringCommands:
         console.print(f"[green]Webhook configured: {url}[/green]")
     
     def autofix_issues(self, namespace: str):
-        """Auto-fix issues"""
-        console.print(f"[bold]Auto-fixing issues in {namespace}[/bold]")
-        pods = self.k8s.list_pods(namespace)
-        crashloop = [p for p in pods if p.status.phase == 'CrashLoopBackOff']
-        if crashloop:
-            console.print(f"Found {len(crashloop)} pods in CrashLoopBackOff")
-            console.print("[dim]Recommendation: Check logs and resource limits[/dim]")
+        """Auto-fix issues with human-in-the-loop confirmation"""
+        console.print(f"[bold]Analyzing issues in {namespace}[/bold]\n")
+        
+        try:
+            pods = self.k8s.list_pods(namespace)
+            issues_found = []
+            
+            # Find crashloop pods
+            for pod in pods:
+                if pod.status.container_statuses:
+                    for container in pod.status.container_statuses:
+                        if container.state.waiting and container.state.waiting.reason == "CrashLoopBackOff":
+                            issues_found.append({
+                                'type': 'crashloop',
+                                'pod': pod.metadata.name,
+                                'container': container.name,
+                                'restarts': container.restart_count
+                            })
+            
+            if not issues_found:
+                console.print("[green]No issues found that can be auto-fixed[/green]")
+                return
+            
+            console.print(f"[yellow]Found {len(issues_found)} issue(s) that can be fixed:[/yellow]\n")
+            
+            for i, issue in enumerate(issues_found, 1):
+                console.print(f"{i}. Pod [cyan]{issue['pod']}[/cyan] - {issue['type']}")
+                console.print(f"   Container: {issue['container']}, Restarts: {issue['restarts']}")
+                
+                # Show exact kubectl command
+                kubectl_cmd = f"kubectl delete pod {issue['pod']} -n {namespace}"
+                console.print(f"   [bold yellow]Command:[/bold yellow] {kubectl_cmd}\n")
+            
+            # Human-in-the-loop confirmation
+            from rich.prompt import Confirm
+            
+            if Confirm.ask("\n[bold]Execute these fixes?[/bold]", default=False):
+                console.print("\n[bold green]Executing fixes...[/bold green]\n")
+                
+                for issue in issues_found:
+                    try:
+                        self.k8s.delete_pod(issue['pod'], namespace)
+                        console.print(f"✓ Deleted pod {issue['pod']}")
+                    except Exception as e:
+                        console.print(f"✗ Failed to delete {issue['pod']}: {e}")
+                
+                console.print("\n[green]Auto-fix complete[/green]")
+            else:
+                console.print("\n[yellow]Auto-fix cancelled[/yellow]")
+                
+        except Exception as e:
+            print_error(f"Auto-fix failed: {e}")
+            raise
     
     def run_benchmark(self, namespace: str):
         """Run benchmark"""

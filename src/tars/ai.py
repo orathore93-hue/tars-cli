@@ -51,7 +51,14 @@ class AIAnalyzer:
             raise GeminiAPIError("AI analysis unavailable - GEMINI_API_KEY not set")
         
         try:
-            prompt = self._build_pod_analysis_prompt(pod_data)
+            # Redact sensitive data before sending to AI
+            from .utils import redact_sensitive_data
+            import json
+            
+            pod_data_str = json.dumps(pod_data, indent=2)
+            redacted_data = redact_sensitive_data(pod_data_str)
+            
+            prompt = self._build_pod_analysis_prompt(json.loads(redacted_data))
             response = self._call_api(prompt)
             return response.text
         except Exception as e:

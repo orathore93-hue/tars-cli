@@ -2,11 +2,47 @@
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.prompt import Confirm
 from typing import List, Dict, Any
 import logging
+import re
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+# Sensitive data patterns for redaction
+SENSITIVE_PATTERNS = [
+    (re.compile(r'password["\s:=]+[^\s"]+', re.IGNORECASE), 'password=<REDACTED>'),
+    (re.compile(r'token["\s:=]+[^\s"]+', re.IGNORECASE), 'token=<REDACTED>'),
+    (re.compile(r'api[_-]?key["\s:=]+[^\s"]+', re.IGNORECASE), 'api_key=<REDACTED>'),
+    (re.compile(r'secret["\s:=]+[^\s"]+', re.IGNORECASE), 'secret=<REDACTED>'),
+    (re.compile(r'bearer\s+[^\s]+', re.IGNORECASE), 'bearer <REDACTED>'),
+    (re.compile(r'authorization:\s*[^\s]+', re.IGNORECASE), 'authorization: <REDACTED>'),
+    # AWS keys
+    (re.compile(r'AKIA[0-9A-Z]{16}'), '<REDACTED_AWS_KEY>'),
+    # Private keys
+    (re.compile(r'-----BEGIN.*PRIVATE KEY-----.*?-----END.*PRIVATE KEY-----', re.DOTALL), '<REDACTED_PRIVATE_KEY>'),
+]
+
+
+def redact_sensitive_data(text: str) -> str:
+    """
+    Redact sensitive information from text before sending to AI or logging.
+    
+    Args:
+        text: Text that may contain sensitive data
+        
+    Returns:
+        Text with sensitive data redacted
+    """
+    if not text:
+        return text
+    
+    redacted = text
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        redacted = pattern.sub(replacement, redacted)
+    
+    return redacted
 
 
 def create_table(title: str, columns: List[str]) -> Table:

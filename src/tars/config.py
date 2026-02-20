@@ -6,13 +6,20 @@ from pydantic import BaseModel, Field, validator
 from pydantic_settings import BaseSettings
 import yaml
 
-# Directories
+# Directories with secure permissions
 TARS_DIR = Path.home() / ".tars"
-TARS_DIR.mkdir(exist_ok=True)
+TARS_DIR.mkdir(exist_ok=True, mode=0o700)  # Only owner can read/write/execute
 
 CONFIG_FILE = TARS_DIR / "config.yaml"
 LOG_FILE = TARS_DIR / "tars.log"
 HISTORY_FILE = TARS_DIR / "history.json"
+LOGS_DIR = TARS_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True, mode=0o700)
+
+# Ensure secure permissions on existing files
+for file_path in [CONFIG_FILE, LOG_FILE, HISTORY_FILE]:
+    if file_path.exists():
+        os.chmod(file_path, 0o600)  # Only owner can read/write
 
 
 class ThresholdsConfig(BaseModel):
