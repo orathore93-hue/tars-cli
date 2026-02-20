@@ -48,7 +48,8 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(
     name="tars",
     help="🤖 TARS - AI-Powered Kubernetes Monitoring for SREs",
-    add_completion=False
+    add_completion=False,
+    no_args_is_help=True
 )
 console = Console()
 
