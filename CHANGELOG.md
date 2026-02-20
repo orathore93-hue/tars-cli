@@ -1,5 +1,13 @@
 # TARS CLI Changelog
 
+## [3.3.0] - 2026-02-20 - UX IMPROVEMENTS 🎨
+
+### ✨ User Experience Enhancements
+- **Added:** Welcoming ASCII art banner with TARS logo
+- **Added:** Random welcome messages for personality
+- **Improved:** Show help menu instead of error when no command provided
+- **Enhanced:** Better first-run experience with visual branding
+
 ## [3.0.0] - 2026-02-20 - OPTIMIZATION & SECURITY RELEASE 🚀
 
 ### 🎯 Phase 3: Optimization & Security - COMPLETE
