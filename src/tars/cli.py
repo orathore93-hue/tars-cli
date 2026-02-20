@@ -57,7 +57,7 @@ def health(namespace: Optional[str] = typer.Option(None, "--namespace", "-n", he
 
 
 @app.command()
-def pods(namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="Filter by namespace")):
+def pods(namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="Filter by namespace (default: all)")):
     """List pods with status and resource usage"""
     try:
         cmd = MonitoringCommands()
