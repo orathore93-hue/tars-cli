@@ -46,17 +46,7 @@ jobs:
       # Build single-file executable with PyInstaller
       - name: Build binary with PyInstaller
         run: |
-          pyinstaller --onefile --name ${{ matrix.binary_name }} \
-            --hidden-import=stars.cli \
-            --hidden-import=stars.commands \
-            --hidden-import=stars.k8s_client \
-            --hidden-import=stars.ai \
-            --hidden-import=stars.incident \
-            --hidden-import=stars.sre_tools \
-            --hidden-import=stars.config \
-            --hidden-import=stars.utils \
-            --hidden-import=stars.security \
-            stars_entry.py
+          pyinstaller --onefile --name ${{ matrix.binary_name }} --hidden-import=stars.cli --hidden-import=stars.commands --hidden-import=stars.k8s_client --hidden-import=stars.ai --hidden-import=stars.incident --hidden-import=stars.sre_tools --hidden-import=stars.config --hidden-import=stars.utils --hidden-import=stars.security stars_entry.py
 
       # Rename binary to platform-specific name
       - name: Rename binary
