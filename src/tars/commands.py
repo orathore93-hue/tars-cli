@@ -522,3 +522,376 @@ class MonitoringCommands:
         except Exception as e:
             print_error(f"Failed to get resources: {e}")
             raise
+
+    def watch_pods(self, namespace: str, interval: int):
+        """Watch pods in real-time"""
+        import time
+        try:
+            while True:
+                console.clear()
+                self.list_pods(namespace)
+                console.print(f"\n[dim]Refreshing every {interval}s... Press Ctrl+C to stop[/dim]")
+                time.sleep(interval)
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Stopped watching[/yellow]")
+    
+    def analyze_cluster(self, namespace: str):
+        """Analyze cluster with AI"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            events = self.k8s.list_events(namespace)
+            
+            if analyzer.is_available():
+                analysis = analyzer.analyze_cluster_health({
+                    'pods': len(pods),
+                    'events': len(events)
+                })
+                console.print(f"\n[bold]AI Analysis:[/bold]\n{analysis}")
+            else:
+                print_warning("AI analysis not available - GEMINI_API_KEY not set")
+        except Exception as e:
+            print_error(f"Analysis failed: {e}")
+            raise
+    
+    def show_errors(self, namespace: str, limit: int):
+        """Show pods with errors"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            error_pods = [p for p in pods if p.status.phase in ['Failed', 'Unknown']]
+            
+            table = create_table(f"Error Pods in {namespace}", ["Name", "Status", "Reason", "Message"])
+            for pod in error_pods[:limit]:
+                reason = pod.status.reason or "N/A"
+                message = pod.status.message or "N/A"
+                table.add_row(pod.metadata.name, pod.status.phase, reason, message[:50])
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to show errors: {e}")
+            raise
+    
+    def find_crashloop(self, namespace: str):
+        """Find CrashLoopBackOff pods"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            crashloop_pods = []
+            
+            for pod in pods:
+                if pod.status.container_statuses:
+                    for container in pod.status.container_statuses:
+                        if container.state.waiting and container.state.waiting.reason == "CrashLoopBackOff":
+                            crashloop_pods.append((pod, container))
+            
+            table = create_table(f"CrashLoopBackOff Pods in {namespace}", ["Pod", "Container", "Restarts", "Message"])
+            for pod, container in crashloop_pods:
+                table.add_row(
+                    pod.metadata.name,
+                    container.name,
+                    str(container.restart_count),
+                    container.state.waiting.message[:50] if container.state.waiting.message else "N/A"
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to find crashloop pods: {e}")
+            raise
+    
+    def find_pending(self, namespace: str):
+        """Find pending pods"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            pending_pods = [p for p in pods if p.status.phase == 'Pending']
+            
+            table = create_table(f"Pending Pods in {namespace}", ["Name", "Reason", "Message"])
+            for pod in pending_pods:
+                reason = pod.status.reason or "N/A"
+                message = pod.status.message or "N/A"
+                table.add_row(pod.metadata.name, reason, message[:60])
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to find pending pods: {e}")
+            raise
+    
+    def find_oom(self, namespace: str):
+        """Find OOMKilled pods"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            oom_pods = []
+            
+            for pod in pods:
+                if pod.status.container_statuses:
+                    for container in pod.status.container_statuses:
+                        if container.last_state.terminated and container.last_state.terminated.reason == "OOMKilled":
+                            oom_pods.append((pod, container))
+            
+            table = create_table(f"OOMKilled Pods in {namespace}", ["Pod", "Container", "Exit Code", "Finished At"])
+            for pod, container in oom_pods:
+                table.add_row(
+                    pod.metadata.name,
+                    container.name,
+                    str(container.last_state.terminated.exit_code),
+                    str(container.last_state.terminated.finished_at)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to find OOM pods: {e}")
+            raise
+    
+    def rollback_resource(self, resource_type: str, resource_name: str, namespace: str):
+        """Rollback a resource"""
+        try:
+            self.k8s.rollback_resource(resource_type, resource_name, namespace)
+            print_success(f"Rolled back {resource_type}/{resource_name}")
+        except Exception as e:
+            print_error(f"Rollback failed: {e}")
+            raise
+    
+    def cordon_node(self, node_name: str):
+        """Cordon a node"""
+        try:
+            self.k8s.cordon_node(node_name)
+            print_success(f"Cordoned node {node_name}")
+        except Exception as e:
+            print_error(f"Failed to cordon: {e}")
+            raise
+    
+    def uncordon_node(self, node_name: str):
+        """Uncordon a node"""
+        try:
+            self.k8s.uncordon_node(node_name)
+            print_success(f"Uncordoned node {node_name}")
+        except Exception as e:
+            print_error(f"Failed to uncordon: {e}")
+            raise
+    
+    def drain_node(self, node_name: str, force: bool):
+        """Drain a node"""
+        try:
+            self.k8s.drain_node(node_name, force)
+            print_success(f"Drained node {node_name}")
+        except Exception as e:
+            print_error(f"Failed to drain: {e}")
+            raise
+    
+    def show_quota(self, namespace: str):
+        """Show resource quotas"""
+        try:
+            quotas = self.k8s.get_resource_quotas(namespace)
+            
+            if not quotas:
+                console.print(f"[yellow]No quotas found in {namespace}[/yellow]")
+                return
+            
+            for quota in quotas:
+                console.print(f"\n[bold]Quota: {quota.metadata.name}[/bold]")
+                table = create_table("Resources", ["Resource", "Used", "Hard"])
+                
+                for resource, hard in (quota.spec.hard or {}).items():
+                    used = quota.status.used.get(resource, "0") if quota.status.used else "0"
+                    table.add_row(resource, str(used), str(hard))
+                
+                console.print(table)
+        except Exception as e:
+            print_error(f"Failed to show quota: {e}")
+            raise
+    
+    def list_crds(self):
+        """List CRDs"""
+        try:
+            crds = self.k8s.list_crds()
+            table = create_table("Custom Resource Definitions", ["Name", "Group", "Version", "Scope"])
+            
+            for crd in crds:
+                table.add_row(
+                    crd.metadata.name,
+                    crd.spec.group,
+                    ",".join([v.name for v in crd.spec.versions]),
+                    crd.spec.scope
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list CRDs: {e}")
+            raise
+    
+    def show_network(self, namespace: str):
+        """Show network policies"""
+        try:
+            policies = self.k8s.list_network_policies(namespace)
+            
+            if not policies:
+                console.print(f"[yellow]No network policies in {namespace}[/yellow]")
+                return
+            
+            table = create_table(f"Network Policies in {namespace}", ["Name", "Pod Selector", "Policy Types"])
+            for policy in policies:
+                selector = str(policy.spec.pod_selector.match_labels) if policy.spec.pod_selector else "All"
+                types = ",".join(policy.spec.policy_types or [])
+                table.add_row(policy.metadata.name, selector, types)
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to show network: {e}")
+            raise
+    
+    def estimate_cost(self, namespace: str):
+        """Estimate costs"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            console.print(f"\n[bold]Cost Estimation for {namespace or 'all namespaces'}[/bold]")
+            console.print(f"Total Pods: {len(pods)}")
+            console.print("[dim]Note: Detailed cost estimation requires metrics server[/dim]")
+        except Exception as e:
+            print_error(f"Failed to estimate cost: {e}")
+            raise
+    
+    def show_audit(self, namespace: str, hours: int):
+        """Show audit logs"""
+        try:
+            events = self.k8s.list_events(namespace)
+            console.print(f"\n[bold]Audit Events (last {hours}h)[/bold]")
+            
+            table = create_table("Events", ["Time", "Type", "Reason", "Object"])
+            for event in events[:50]:
+                table.add_row(
+                    self._calculate_age(event.last_timestamp or event.event_time),
+                    event.type,
+                    event.reason,
+                    f"{event.involved_object.kind}/{event.involved_object.name}"
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to show audit: {e}")
+            raise
+    
+    def security_scan(self, namespace: str):
+        """Security scan"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            issues = []
+            
+            for pod in pods:
+                if pod.spec.security_context is None:
+                    issues.append(f"{pod.metadata.name}: No security context")
+                if pod.spec.containers:
+                    for container in pod.spec.containers:
+                        if container.security_context is None or not container.security_context.run_as_non_root:
+                            issues.append(f"{pod.metadata.name}/{container.name}: Running as root")
+            
+            console.print(f"\n[bold]Security Issues in {namespace}[/bold]")
+            for issue in issues[:20]:
+                console.print(f"⚠ {issue}")
+        except Exception as e:
+            print_error(f"Security scan failed: {e}")
+            raise
+    
+    def check_compliance(self, namespace: str):
+        """Check compliance"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            deployments = self.k8s.list_deployments(namespace)
+            
+            console.print(f"\n[bold]Compliance Check for {namespace}[/bold]\n")
+            
+            checks = {
+                "Pods with resource limits": sum(1 for p in pods if p.spec.containers[0].resources.limits),
+                "Deployments with replicas > 1": sum(1 for d in deployments if d.spec.replicas > 1),
+                "Total pods": len(pods),
+                "Total deployments": len(deployments)
+            }
+            
+            for check, value in checks.items():
+                console.print(f"✓ {check}: {value}")
+        except Exception as e:
+            print_error(f"Compliance check failed: {e}")
+            raise
+    
+    def export_resources(self, output_file: str, namespace: str, format: str):
+        """Export resources"""
+        try:
+            import yaml, json
+            
+            resources = {
+                'pods': [self.k8s.api_client.sanitize_for_serialization(p) for p in self.k8s.list_pods(namespace)],
+                'deployments': [self.k8s.api_client.sanitize_for_serialization(d) for d in self.k8s.list_deployments(namespace)],
+                'services': [self.k8s.api_client.sanitize_for_serialization(s) for s in self.k8s.list_services(namespace)]
+            }
+            
+            with open(output_file, 'w') as f:
+                if format == 'json':
+                    json.dump(resources, f, indent=2)
+                else:
+                    yaml.dump(resources, f)
+            
+            print_success(f"Exported resources to {output_file}")
+        except Exception as e:
+            print_error(f"Export failed: {e}")
+            raise
+    
+    def show_diff(self, resource_type: str, resource_name: str, file_path: str, namespace: str):
+        """Show diff"""
+        try:
+            console.print(f"[yellow]Diff functionality requires kubectl diff[/yellow]")
+            console.print(f"Run: kubectl diff -f {file_path}")
+        except Exception as e:
+            print_error(f"Diff failed: {e}")
+            raise
+    
+    def show_history(self, resource_type: str, resource_name: str, namespace: str):
+        """Show rollout history"""
+        try:
+            if resource_type == "deployment":
+                history = self.k8s.get_deployment_history(resource_name, namespace)
+                console.print(f"\n[bold]Rollout History for {resource_name}[/bold]")
+                console.print(history)
+            else:
+                console.print(f"[yellow]History only supported for deployments[/yellow]")
+        except Exception as e:
+            print_error(f"Failed to show history: {e}")
+            raise
+    
+    def triage_issues(self, namespace: str):
+        """AI-powered triage"""
+        try:
+            pods = self.k8s.list_pods(namespace)
+            problem_pods = [p for p in pods if p.status.phase != 'Running']
+            
+            if not problem_pods:
+                console.print(f"[green]No issues found in {namespace}[/green]")
+                return
+            
+            console.print(f"\n[bold]Issues Found:[/bold]")
+            for pod in problem_pods:
+                console.print(f"• {pod.metadata.name}: {pod.status.phase}")
+            
+            if analyzer.is_available():
+                console.print("\n[bold]AI Recommendations:[/bold]")
+                for pod in problem_pods[:3]:
+                    analysis = analyzer.analyze_pod_issue(self._extract_pod_data(pod))
+                    console.print(f"\n{pod.metadata.name}:\n{analysis}")
+        except Exception as e:
+            print_error(f"Triage failed: {e}")
+            raise
+    
+    def show_metrics(self, namespace: str, resource: str):
+        """Show metrics"""
+        try:
+            if resource == "pods":
+                metrics = self.k8s.get_pod_metrics(namespace)
+                table = create_table(f"Pod Metrics in {namespace}", ["Pod", "CPU", "Memory"])
+                
+                for metric in metrics[:20]:
+                    if metric.get('containers'):
+                        cpu = metric['containers'][0]['usage'].get('cpu', 'N/A')
+                        memory = metric['containers'][0]['usage'].get('memory', 'N/A')
+                        table.add_row(metric['metadata']['name'], cpu, memory)
+                
+                console.print(table)
+            else:
+                console.print(f"[yellow]Metrics for {resource} not yet implemented[/yellow]")
+        except Exception as e:
+            print_error(f"Failed to show metrics: {e}")
+            raise

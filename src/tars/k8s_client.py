@@ -44,6 +44,10 @@ class KubernetesClient:
         self.core_v1 = client.CoreV1Api()
         self.apps_v1 = client.AppsV1Api()
         self.auth_v1 = client.AuthorizationV1Api()
+        self.networking_v1 = client.NetworkingV1Api()
+        self.api_extensions = client.ApiextensionsV1Api()
+        self.custom_api = client.CustomObjectsApi()
+        self.api_client = client.ApiClient()
     
     @retry_on_failure()
     def list_pods(self, namespace: Optional[str] = None) -> List[Any]:
@@ -346,4 +350,75 @@ class KubernetesClient:
             return usage
         except Exception as e:
             logger.error(f"Failed to get usage: {e}")
+            raise
+
+    def rollback_resource(self, resource_type: str, name: str, namespace: str):
+        """Rollback a resource"""
+        try:
+            if resource_type == "deployment":
+                self.apps_v1.rollback_namespaced_deployment(name, namespace, {})
+            else:
+                raise ValueError(f"Rollback not supported for {resource_type}")
+        except ApiException as e:
+            logger.error(f"Failed to rollback: {e}")
+            raise
+    
+    def cordon_node(self, node_name: str):
+        """Cordon a node"""
+        try:
+            patch = {"spec": {"unschedulable": True}}
+            self.core_v1.patch_node(node_name, patch)
+        except ApiException as e:
+            logger.error(f"Failed to cordon node: {e}")
+            raise
+    
+    def uncordon_node(self, node_name: str):
+        """Uncordon a node"""
+        try:
+            patch = {"spec": {"unschedulable": False}}
+            self.core_v1.patch_node(node_name, patch)
+        except ApiException as e:
+            logger.error(f"Failed to uncordon node: {e}")
+            raise
+    
+    def drain_node(self, node_name: str, force: bool):
+        """Drain a node"""
+        try:
+            import subprocess
+            cmd = ['kubectl', 'drain', node_name, '--ignore-daemonsets', '--delete-emptydir-data']
+            if force:
+                cmd.append('--force')
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            logger.error(f"Failed to drain node: {e}")
+            raise
+    
+    def list_crds(self):
+        """List CRDs"""
+        try:
+            return self.api_extensions.list_custom_resource_definition().items
+        except ApiException as e:
+            logger.error(f"Failed to list CRDs: {e}")
+            raise
+    
+    def list_network_policies(self, namespace: str):
+        """List network policies"""
+        try:
+            return self.networking_v1.list_namespaced_network_policy(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to list network policies: {e}")
+            raise
+    
+    def get_deployment_history(self, name: str, namespace: str):
+        """Get deployment history"""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['kubectl', 'rollout', 'history', f'deployment/{name}', '-n', namespace],
+                capture_output=True,
+                text=True
+            )
+            return result.stdout
+        except Exception as e:
+            logger.error(f"Failed to get history: {e}")
             raise
