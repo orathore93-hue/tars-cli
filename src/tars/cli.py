@@ -1,12 +1,26 @@
 """TARS CLI - Main entry point"""
 import typer
 import logging
+import sys
 from typing import Optional
 from rich.console import Console
 
 from .commands import MonitoringCommands
 from .config import config, LOG_FILE
 from .utils import print_error, print_success, print_info
+
+TARS_BANNER = """[bold cyan]
+╔════════════════════════════════════════════════════════════╗
+║  ████████╗ █████╗ ██████╗ ███████╗                         ║
+║  ╚══██╔══╝██╔══██╗██╔══██╗██╔════╝                         ║
+║     ██║   ███████║██████╔╝███████╗                         ║
+║     ██║   ██╔══██║██╔══██╗╚════██║                         ║
+║     ██║   ██║  ██║██║  ██║███████║                         ║
+║     ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝                         ║
+║                                                            ║
+║  [bold yellow]Technical Assistance & Reliability System[/bold yellow]             ║
+╚════════════════════════════════════════════════════════════╝
+[/bold cyan]"""
 
 # Setup logging
 logging.basicConfig(
@@ -104,6 +118,9 @@ def version():
 def main():
     """Main entry point"""
     try:
+        # Show banner only when no command provided (help screen)
+        if len(sys.argv) == 1:
+            console.print(TARS_BANNER)
         app()
     except KeyboardInterrupt:
         console.print("\n[yellow]Operation cancelled[/yellow]")
