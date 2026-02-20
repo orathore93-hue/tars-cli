@@ -526,28 +526,91 @@ class MonitoringCommands:
     def watch_pods(self, namespace: str, interval: int):
         """Watch pods in real-time"""
         import time
+        from datetime import datetime
+        from rich.table import Table
+        
         try:
+            console.print("[bold green]TARS:[/bold green] watching your cluster... Press Ctrl+C to stop\n")
+            
             while True:
+                pods = self.k8s.list_pods(namespace)
+                
+                table = Table(title=f"Live Pod Monitor - {datetime.now().strftime('%H:%M:%S')}")
+                
+                if not namespace:
+                    table.add_column("Namespace", style="magenta")
+                
+                table.add_column("Pod", style="cyan")
+                table.add_column("Status", style="green")
+                table.add_column("Restarts", style="yellow")
+                table.add_column("Ready")
+                
+                for pod in pods:
+                    status = pod.status.phase
+                    restarts = sum([c.restart_count for c in pod.status.container_statuses]) if pod.status.container_statuses else 0
+                    ready = f"{sum([1 for c in pod.status.container_statuses if c.ready])}/{len(pod.status.container_statuses)}" if pod.status.container_statuses else "0/0"
+                    
+                    status_color = "green" if status == "Running" else "red"
+                    
+                    if not namespace:
+                        table.add_row(
+                            pod.metadata.namespace,
+                            pod.metadata.name[:40],
+                            f"[{status_color}]{status}[/{status_color}]",
+                            str(restarts),
+                            ready
+                        )
+                    else:
+                        table.add_row(
+                            pod.metadata.name[:40],
+                            f"[{status_color}]{status}[/{status_color}]",
+                            str(restarts),
+                            ready
+                        )
+                
                 console.clear()
-                self.list_pods(namespace)
-                console.print(f"\n[dim]Refreshing every {interval}s... Press Ctrl+C to stop[/dim]")
+                console.print(table)
                 time.sleep(interval)
+                
         except KeyboardInterrupt:
-            console.print("\n[yellow]Stopped watching[/yellow]")
+            console.print("\n[bold green]TARS:[/bold green] stopped watching. I'll be here if you need me.")
+        except Exception as e:
+            print_error(f"Watch failed: {e}")
+            raise
     
     def analyze_cluster(self, namespace: str):
         """Analyze cluster with AI"""
         try:
+            console.print("[bold green]TARS:[/bold green] analyzing cluster...\n")
+            
             pods = self.k8s.list_pods(namespace)
-            events = self.k8s.list_events(namespace)
+            
+            issues = []
+            for pod in pods:
+                status = pod.status.phase
+                restarts = sum([c.restart_count for c in pod.status.container_statuses]) if pod.status.container_statuses else 0
+                
+                if status != "Running":
+                    issues.append(f"Pod {pod.metadata.name}: Status={status}")
+                if restarts > 5:
+                    issues.append(f"Pod {pod.metadata.name}: {restarts} restarts")
+            
+            if not issues:
+                console.print("[bold green]No issues found. Everything's running smoother than my humor settings.[/bold green]")
+                return
             
             if analyzer.is_available():
-                analysis = analyzer.analyze_cluster_health({
-                    'pods': len(pods),
-                    'events': len(events)
-                })
-                console.print(f"\n[bold]AI Analysis:[/bold]\n{analysis}")
+                prompt = f"Kubernetes cluster issues in namespace '{namespace}':\n" + "\n".join(issues)
+                
+                with console.status("[bold green]TARS:[/bold green] thinking..."):
+                    analysis = analyzer.analyze_cluster_health({'issues': issues})
+                
+                from rich.panel import Panel
+                console.print(Panel(analysis, title="[bold green]TARS:[/bold green] Analysis", border_style="cyan"))
             else:
+                console.print("[bold yellow]Issues found:[/bold yellow]")
+                for issue in issues:
+                    console.print(f"  • {issue}")
                 print_warning("AI analysis not available - GEMINI_API_KEY not set")
         except Exception as e:
             print_error(f"Analysis failed: {e}")
@@ -977,10 +1040,40 @@ class MonitoringCommands:
     
     def god_mode(self):
         """God mode"""
-        console.print("\n[bold cyan]═══ GOD MODE ═══[/bold cyan]\n")
-        self.health_check(None)
-        console.print()
-        self.list_nodes()
+        console.clear()
+        console.print("""[bold red]
+    ╔═══════════════════════════════════════════════════════════════╗
+    ║                                                               ║
+    ║              ⚡ TARS GOD MODE ACTIVATED ⚡                    ║
+    ║                                                               ║
+    ║         "This is no time for caution." - TARS                 ║
+    ║                                                               ║
+    ╚═══════════════════════════════════════════════════════════════╝
+    [/bold red]
+    
+    [bold yellow]🔥 SRE Power Commands:[/bold yellow]
+    
+    [bold cyan]Monitoring & Triage:[/bold cyan]
+      tars oncall              - On-call engineer dashboard
+      tars triage              - Quick incident triage
+      tars incident-report     - Generate incident report with AI
+      
+    [bold cyan]Auto-Remediation:[/bold cyan]
+      tars autofix             - Auto-fix common issues
+      tars smart-scale <dep>   - AI-powered scaling decisions
+      
+    [bold cyan]Deep Analysis:[/bold cyan]
+      tars analyze             - AI cluster analysis
+      tars diagnose <pod>      - Deep pod diagnosis
+      tars forecast            - Predict future issues
+      
+    [bold cyan]Quick Actions:[/bold cyan]
+      tars restart deployment <name>  - Restart deployment
+      tars scale deployment <name> <n> - Scale deployment
+      tars rollback deployment <name>  - Rollback deployment
+      
+    [bold green]💡 Pro Tip:[/bold green] Start with 'tars pulse' for a complete overview
+    """)
     
     def generate_heatmap(self, metric: str, namespace: str):
         """Generate heatmap"""
