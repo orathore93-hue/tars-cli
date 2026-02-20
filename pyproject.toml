@@ -5,26 +5,40 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "stars-cli"
 version = "4.3.0"
-description = "AI-powered Kubernetes cluster monitoring and troubleshooting tool for SREs"
+description = "AI-powered Kubernetes monitoring, incident management, and troubleshooting CLI tool for Site Reliability Engineers (SREs) and DevOps teams. Real-time cluster monitoring, crashloop debugging, RBAC enforcement, and intelligent diagnostics."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Omer Rathore", email = "orathore93@gmail.com"}
 ]
-keywords = ["kubernetes", "monitoring", "ai", "devops", "k8s", "cli", "sre", "oncall"]
+keywords = [
+    "kubernetes", "monitoring", "sre", "devops", "incident-management", 
+    "on-call", "troubleshooting", "ai", "gemini", "cluster-monitoring",
+    "kubernetes-cli", "kubectl", "k8s", "site-reliability", "observability",
+    "crashloop", "debugging", "rbac", "security", "audit", "mttr",
+    "incident-response", "automation", "diagnostics", "alerting"
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Logging",
+    "Topic :: Utilities",
+    "Environment :: Console",
+    "Natural Language :: English",
 ]
 
 dependencies = [
