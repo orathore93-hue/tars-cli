@@ -321,3 +321,204 @@ class MonitoringCommands:
         except Exception as e:
             print_error(f"Failed to list services: {e}")
             raise
+
+    def list_namespaces(self):
+        """List all namespaces"""
+        try:
+            namespaces = self.k8s.list_namespaces()
+            table = create_table("Namespaces", ["Name", "Status", "Age"])
+            
+            for ns in namespaces:
+                table.add_row(
+                    ns.metadata.name,
+                    ns.status.phase,
+                    self._calculate_age(ns.metadata.creation_timestamp)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list namespaces: {e}")
+            raise
+    
+    def list_configmaps(self, namespace: str):
+        """List configmaps"""
+        try:
+            configmaps = self.k8s.list_configmaps(namespace)
+            table = create_table(f"ConfigMaps in {namespace}", ["Name", "Data", "Age"])
+            
+            for cm in configmaps:
+                table.add_row(
+                    cm.metadata.name,
+                    str(len(cm.data or {})),
+                    self._calculate_age(cm.metadata.creation_timestamp)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list configmaps: {e}")
+            raise
+    
+    def list_secrets(self, namespace: str):
+        """List secrets"""
+        try:
+            secrets = self.k8s.list_secrets(namespace)
+            table = create_table(f"Secrets in {namespace}", ["Name", "Type", "Data", "Age"])
+            
+            for secret in secrets:
+                table.add_row(
+                    secret.metadata.name,
+                    secret.type,
+                    str(len(secret.data or {})),
+                    self._calculate_age(secret.metadata.creation_timestamp)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list secrets: {e}")
+            raise
+    
+    def list_ingress(self, namespace: str):
+        """List ingress resources"""
+        try:
+            ingresses = self.k8s.list_ingress(namespace)
+            table = create_table(f"Ingress in {namespace}", ["Name", "Hosts", "Address", "Age"])
+            
+            for ing in ingresses:
+                hosts = ",".join([rule.host for rule in ing.spec.rules or []])
+                address = ",".join([lb.ip for lb in ing.status.load_balancer.ingress or []]) if ing.status.load_balancer else "<none>"
+                
+                table.add_row(
+                    ing.metadata.name,
+                    hosts or "*",
+                    address,
+                    self._calculate_age(ing.metadata.creation_timestamp)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list ingress: {e}")
+            raise
+    
+    def list_volumes(self, namespace: str):
+        """List persistent volume claims"""
+        try:
+            pvcs = self.k8s.list_pvcs(namespace)
+            table = create_table(f"Persistent Volume Claims in {namespace}", ["Name", "Status", "Volume", "Capacity", "Access Modes", "Age"])
+            
+            for pvc in pvcs:
+                table.add_row(
+                    pvc.metadata.name,
+                    pvc.status.phase,
+                    pvc.spec.volume_name or "<pending>",
+                    str(pvc.status.capacity.get('storage', 'N/A')) if pvc.status.capacity else "N/A",
+                    ",".join(pvc.spec.access_modes or []),
+                    self._calculate_age(pvc.metadata.creation_timestamp)
+                )
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to list volumes: {e}")
+            raise
+    
+    def describe_resource(self, resource_type: str, resource_name: str, namespace: str):
+        """Describe a resource"""
+        try:
+            resource = self.k8s.get_resource(resource_type, resource_name, namespace)
+            console.print(f"\n[bold]Name:[/bold] {resource.metadata.name}")
+            console.print(f"[bold]Namespace:[/bold] {resource.metadata.namespace or 'cluster-wide'}")
+            console.print(f"[bold]Type:[/bold] {resource_type}")
+            console.print(f"[bold]Created:[/bold] {resource.metadata.creation_timestamp}")
+            
+            if hasattr(resource, 'status'):
+                console.print(f"\n[bold]Status:[/bold]")
+                console.print(resource.status)
+        except Exception as e:
+            print_error(f"Failed to describe {resource_type}/{resource_name}: {e}")
+            raise
+    
+    def top_pods(self, namespace: str, limit: int):
+        """Show top resource-consuming pods"""
+        try:
+            metrics = self.k8s.get_pod_metrics(namespace)
+            table = create_table(f"Top {limit} Pods by Resource Usage", ["Pod", "CPU", "Memory"])
+            
+            sorted_metrics = sorted(metrics, key=lambda x: x.containers[0].usage['cpu'], reverse=True)[:limit]
+            
+            for metric in sorted_metrics:
+                cpu = metric.containers[0].usage.get('cpu', '0')
+                memory = metric.containers[0].usage.get('memory', '0')
+                table.add_row(metric.metadata.name, cpu, memory)
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to get metrics: {e}")
+            raise
+    
+    def restart_resource(self, resource_type: str, resource_name: str, namespace: str):
+        """Restart a resource"""
+        try:
+            self.k8s.restart_resource(resource_type, resource_name, namespace)
+            print_success(f"Restarted {resource_type}/{resource_name}")
+        except Exception as e:
+            print_error(f"Failed to restart: {e}")
+            raise
+    
+    def scale_resource(self, resource_type: str, resource_name: str, replicas: int, namespace: str):
+        """Scale a resource"""
+        try:
+            self.k8s.scale_resource(resource_type, resource_name, replicas, namespace)
+            print_success(f"Scaled {resource_type}/{resource_name} to {replicas} replicas")
+        except Exception as e:
+            print_error(f"Failed to scale: {e}")
+            raise
+    
+    def exec_pod(self, pod_name: str, command: str, namespace: str, container: str = None):
+        """Execute command in pod"""
+        try:
+            output = self.k8s.exec_in_pod(pod_name, command, namespace, container)
+            console.print(output)
+        except Exception as e:
+            print_error(f"Failed to execute command: {e}")
+            raise
+    
+    def port_forward(self, pod_name: str, port: str, namespace: str):
+        """Port forward to pod"""
+        try:
+            console.print(f"[bold]Port forwarding {port} to {pod_name}...[/bold]")
+            console.print("Press Ctrl+C to stop")
+            self.k8s.port_forward_pod(pod_name, port, namespace)
+        except Exception as e:
+            print_error(f"Failed to port forward: {e}")
+            raise
+    
+    def show_context(self):
+        """Show current context"""
+        try:
+            context = self.k8s.get_current_context()
+            console.print(f"\n[bold]Current Context:[/bold] {context['name']}")
+            console.print(f"[bold]Cluster:[/bold] {context['context'].get('cluster', 'N/A')}")
+            console.print(f"[bold]User:[/bold] {context['context'].get('user', 'N/A')}")
+            console.print(f"[bold]Namespace:[/bold] {context['context'].get('namespace', 'default')}")
+        except Exception as e:
+            print_error(f"Failed to get context: {e}")
+            raise
+    
+    def show_resources(self, namespace: str):
+        """Show resource usage and quotas"""
+        try:
+            quotas = self.k8s.get_resource_quotas(namespace)
+            usage = self.k8s.get_namespace_usage(namespace)
+            
+            console.print(f"\n[bold]Resource Usage for {namespace}[/bold]\n")
+            
+            table = create_table("Resources", ["Resource", "Used", "Limit", "Percentage"])
+            for resource, values in usage.items():
+                used = values.get('used', 'N/A')
+                limit = values.get('limit', 'N/A')
+                pct = values.get('percentage', 'N/A')
+                table.add_row(resource, str(used), str(limit), str(pct))
+            
+            console.print(table)
+        except Exception as e:
+            print_error(f"Failed to get resources: {e}")
+            raise

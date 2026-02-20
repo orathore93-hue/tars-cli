@@ -168,3 +168,182 @@ class KubernetesClient:
         except ApiException as e:
             logger.error(f"Failed to list services: {e}")
             raise
+
+    @retry_on_failure()
+    def list_namespaces(self):
+        """List all namespaces"""
+        try:
+            return self.core_v1.list_namespace().items
+        except ApiException as e:
+            logger.error(f"Failed to list namespaces: {e}")
+            raise
+    
+    @retry_on_failure()
+    def list_configmaps(self, namespace: str = "default"):
+        """List configmaps"""
+        try:
+            return self.core_v1.list_namespaced_config_map(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to list configmaps: {e}")
+            raise
+    
+    @retry_on_failure()
+    def list_secrets(self, namespace: str = "default"):
+        """List secrets"""
+        try:
+            return self.core_v1.list_namespaced_secret(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to list secrets: {e}")
+            raise
+    
+    @retry_on_failure()
+    def list_ingress(self, namespace: str = "default"):
+        """List ingress resources"""
+        try:
+            return self.networking_v1.list_namespaced_ingress(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to list ingress: {e}")
+            raise
+    
+    @retry_on_failure()
+    def list_pvcs(self, namespace: str = "default"):
+        """List persistent volume claims"""
+        try:
+            return self.core_v1.list_namespaced_persistent_volume_claim(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to list PVCs: {e}")
+            raise
+    
+    @retry_on_failure()
+    def get_resource(self, resource_type: str, name: str, namespace: str):
+        """Get a specific resource"""
+        try:
+            if resource_type == "pod":
+                return self.core_v1.read_namespaced_pod(name, namespace)
+            elif resource_type == "deployment":
+                return self.apps_v1.read_namespaced_deployment(name, namespace)
+            elif resource_type == "service":
+                return self.core_v1.read_namespaced_service(name, namespace)
+            else:
+                raise ValueError(f"Unsupported resource type: {resource_type}")
+        except ApiException as e:
+            logger.error(f"Failed to get {resource_type}/{name}: {e}")
+            raise
+    
+    @retry_on_failure()
+    def get_pod_metrics(self, namespace: str = "default"):
+        """Get pod metrics"""
+        try:
+            return self.custom_api.list_namespaced_custom_object(
+                group="metrics.k8s.io",
+                version="v1beta1",
+                namespace=namespace,
+                plural="pods"
+            )['items']
+        except ApiException as e:
+            logger.error(f"Failed to get pod metrics: {e}")
+            raise
+    
+    @retry_on_failure()
+    def restart_resource(self, resource_type: str, name: str, namespace: str):
+        """Restart a resource by updating annotation"""
+        try:
+            from datetime import datetime
+            patch = {
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "annotations": {
+                                "kubectl.kubernetes.io/restartedAt": datetime.utcnow().isoformat()
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if resource_type == "deployment":
+                self.apps_v1.patch_namespaced_deployment(name, namespace, patch)
+            elif resource_type == "statefulset":
+                self.apps_v1.patch_namespaced_stateful_set(name, namespace, patch)
+            else:
+                raise ValueError(f"Cannot restart {resource_type}")
+        except ApiException as e:
+            logger.error(f"Failed to restart {resource_type}/{name}: {e}")
+            raise
+    
+    @retry_on_failure()
+    def scale_resource(self, resource_type: str, name: str, replicas: int, namespace: str):
+        """Scale a resource"""
+        try:
+            patch = {"spec": {"replicas": replicas}}
+            
+            if resource_type == "deployment":
+                self.apps_v1.patch_namespaced_deployment_scale(name, namespace, patch)
+            elif resource_type == "statefulset":
+                self.apps_v1.patch_namespaced_stateful_set_scale(name, namespace, patch)
+            else:
+                raise ValueError(f"Cannot scale {resource_type}")
+        except ApiException as e:
+            logger.error(f"Failed to scale {resource_type}/{name}: {e}")
+            raise
+    
+    def exec_in_pod(self, pod_name: str, command: str, namespace: str, container: str = None):
+        """Execute command in pod"""
+        try:
+            from kubernetes.stream import stream
+            exec_command = ['/bin/sh', '-c', command]
+            
+            resp = stream(
+                self.core_v1.connect_get_namespaced_pod_exec,
+                pod_name,
+                namespace,
+                container=container,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False
+            )
+            return resp
+        except Exception as e:
+            logger.error(f"Failed to exec in pod: {e}")
+            raise
+    
+    def port_forward_pod(self, pod_name: str, port: str, namespace: str):
+        """Port forward to pod"""
+        try:
+            import subprocess
+            local_port, remote_port = port.split(':')
+            cmd = ['kubectl', 'port-forward', f'pod/{pod_name}', f'{local_port}:{remote_port}', '-n', namespace]
+            subprocess.run(cmd)
+        except Exception as e:
+            logger.error(f"Failed to port forward: {e}")
+            raise
+    
+    def get_current_context(self):
+        """Get current context"""
+        try:
+            from kubernetes import config as k8s_config
+            contexts, active_context = k8s_config.list_kube_config_contexts()
+            return active_context
+        except Exception as e:
+            logger.error(f"Failed to get context: {e}")
+            raise
+    
+    def get_resource_quotas(self, namespace: str):
+        """Get resource quotas"""
+        try:
+            return self.core_v1.list_namespaced_resource_quota(namespace).items
+        except ApiException as e:
+            logger.error(f"Failed to get quotas: {e}")
+            raise
+    
+    def get_namespace_usage(self, namespace: str):
+        """Get namespace resource usage"""
+        try:
+            pods = self.list_pods(namespace)
+            usage = {'pods': len(pods), 'cpu': 0, 'memory': 0}
+            return usage
+        except Exception as e:
+            logger.error(f"Failed to get usage: {e}")
+            raise

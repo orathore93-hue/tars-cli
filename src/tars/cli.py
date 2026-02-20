@@ -177,6 +177,174 @@ def services(namespace: str = typer.Option("default", "--namespace", "-n", help=
         raise typer.Exit(1)
 
 
+@app.command()
+def namespaces():
+    """List all namespaces"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_namespaces()
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def configmaps(namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")):
+    """List configmaps"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_configmaps(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def secrets(namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")):
+    """List secrets"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_secrets(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def ingress(namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")):
+    """List ingress resources"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_ingress(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def volumes(namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")):
+    """List persistent volumes and claims"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.list_volumes(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def describe(
+    resource_type: str = typer.Argument(..., help="Resource type (pod, deployment, service, etc)"),
+    resource_name: str = typer.Argument(..., help="Resource name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
+):
+    """Describe a Kubernetes resource"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.describe_resource(resource_type, resource_name, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def top(
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace"),
+    limit: int = typer.Option(10, "--limit", "-l", help="Number of pods to show")
+):
+    """Show top resource-consuming pods"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.top_pods(namespace, limit)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def restart(
+    resource_type: str = typer.Argument(..., help="Resource type (deployment, statefulset)"),
+    resource_name: str = typer.Argument(..., help="Resource name"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
+):
+    """Restart a deployment or statefulset"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.restart_resource(resource_type, resource_name, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def scale(
+    resource_type: str = typer.Argument(..., help="Resource type (deployment, statefulset)"),
+    resource_name: str = typer.Argument(..., help="Resource name"),
+    replicas: int = typer.Argument(..., help="Number of replicas"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
+):
+    """Scale a deployment or statefulset"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.scale_resource(resource_type, resource_name, replicas, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def exec(
+    pod_name: str = typer.Argument(..., help="Pod name"),
+    command: str = typer.Argument(..., help="Command to execute"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace"),
+    container: str = typer.Option(None, "--container", "-c", help="Container name")
+):
+    """Execute command in a pod"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.exec_pod(pod_name, command, namespace, container)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def port_forward(
+    pod_name: str = typer.Argument(..., help="Pod name"),
+    port: str = typer.Argument(..., help="Port mapping (local:remote)"),
+    namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
+):
+    """Forward local port to pod"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.port_forward(pod_name, port, namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def context():
+    """Show current Kubernetes context"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_context()
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
+@app.command()
+def resources(namespace: str = typer.Argument(..., help="Namespace to analyze")):
+    """Show resource usage and quotas for namespace"""
+    try:
+        cmd = MonitoringCommands()
+        cmd.show_resources(namespace)
+    except Exception as e:
+        print_error(f"Command failed: {e}")
+        raise typer.Exit(1)
+
+
 def main():
     """Main entry point"""
     try:
