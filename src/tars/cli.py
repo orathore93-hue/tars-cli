@@ -118,8 +118,8 @@ def version():
 def main():
     """Main entry point"""
     try:
-        # Show banner only when no command provided (help screen)
-        if len(sys.argv) == 1:
+        # Show banner when showing help (no command or --help)
+        if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']):
             console.print(TARS_BANNER)
         app()
     except KeyboardInterrupt:
