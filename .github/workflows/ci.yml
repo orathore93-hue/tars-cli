@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     
     steps:
     - uses: actions/checkout@v4
@@ -29,13 +29,12 @@ jobs:
     
     - name: Verify installation
       run: |
-        tars version
-        tars --help
+        stars --help
+      continue-on-error: false
     
     - name: Basic smoke tests
       run: |
-        tars quote
-        tars creator
+        python -m stars.cli --help
       continue-on-error: true
 
   security:
