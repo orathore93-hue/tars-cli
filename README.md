@@ -568,15 +568,15 @@ If STARS helps you during incidents, consider giving it a star! ⭐
 - [RBAC Requirements](docs/RBAC_REQUIREMENTS.md) - Required Kubernetes permissions
 
 ### Developer Resources
-- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
-- [Architecture](ARCHITECTURE.md) - System design and architecture
+- [Contributing Guidelines](docs/CONTRIBUTING.md) - How to contribute
+- [Architecture](docs/ARCHITECTURE.md) - System design and architecture
 - [Changelog](CHANGELOG.md) - Version history and changes
 
 ### Security Documentation
 - [Security Policy](SECURITY.md) - Security features and best practices
-- [Incident Response Plan](INCIDENT_RESPONSE.md) - Security incident procedures
-- [DevSecOps Pipeline](DEVSECOPS_PIPELINE.md) - CI/CD security measures
-- [Security Hardening Report](SECURITY_HARDENING_REPORT.md) - Audit results
+- [Incident Response Plan](docs/INCIDENT_RESPONSE.md) - Security incident procedures
+- [Production Readiness](docs/PRODUCTION_READINESS.md) - Deployment checklist
+- [Next Steps](docs/NEXT_STEPS.md) - Development roadmap
 
 ## 🚀 Get Started Now
 
