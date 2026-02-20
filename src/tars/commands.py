@@ -1216,10 +1216,100 @@ class MonitoringCommands:
     
     def show_cardinality(self, url: str):
         """Show cardinality"""
-        console.print("[bold]Metric Cardinality[/bold]")
-        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+        from .config import config
+        prom_url = url or config.settings.prometheus_url
+        
+        if not prom_url:
+            console.print("[yellow]Prometheus URL not configured[/yellow]")
+            console.print("Set with: export PROMETHEUS_URL='http://prometheus:9090'")
+            return
+        
+        console.print("\n[bold cyan]Checking High Cardinality Metrics...[/bold cyan]\n")
+        console.print(f"[dim]Prometheus: {prom_url}[/dim]\n")
+        
+        try:
+            import requests
+            response = requests.get(f"{prom_url}/api/v1/label/__name__/values", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                metrics = data.get('data', [])
+                
+                console.print(f"[green]Found {len(metrics)} metrics[/green]")
+                console.print("\n[bold]Top metrics by name:[/bold]")
+                
+                table = create_table("Metrics Sample", ["Metric Name"])
+                for metric in metrics[:20]:
+                    table.add_row(metric)
+                
+                console.print(table)
+                console.print(f"\n[dim]Showing 20 of {len(metrics)} metrics[/dim]")
+                console.print("\n[bold yellow]💡 Tip:[/bold yellow] Use 'tars cardinality-labels <metric>' to analyze specific metric")
+            else:
+                console.print(f"[red]Failed to connect to Prometheus: {response.status_code}[/red]")
+        except Exception as e:
+            console.print(f"[red]Error connecting to Prometheus: {e}[/red]")
+            console.print("[dim]Make sure Prometheus is accessible and PROMETHEUS_URL is correct[/dim]")
     
     def show_label_cardinality(self, metric: str, url: str):
         """Show label cardinality"""
-        console.print(f"[bold]Label Cardinality for {metric}[/bold]")
-        console.print("[dim]Note: Requires Prometheus connection[/dim]")
+        from .config import config
+        prom_url = url or config.settings.prometheus_url
+        
+        if not prom_url:
+            console.print("[yellow]Prometheus URL not configured[/yellow]")
+            console.print("Set with: export PROMETHEUS_URL='http://prometheus:9090'")
+            return
+        
+        console.print(f"\n[bold cyan]Label Cardinality Analysis: {metric}[/bold cyan]\n")
+        
+        try:
+            import requests
+            response = requests.get(f"{prom_url}/api/v1/query", params={'query': metric}, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                result = data.get('data', {}).get('result', [])
+                
+                if not result:
+                    console.print(f"[yellow]No data found for metric: {metric}[/yellow]")
+                    return
+                
+                # Analyze labels
+                label_values = {}
+                
+                for series in result:
+                    for label, value in series.get('metric', {}).items():
+                        if label == '__name__':
+                            continue
+                        if label not in label_values:
+                            label_values[label] = set()
+                        label_values[label].add(value)
+                
+                # Calculate cardinality
+                label_cardinality = [
+                    {'label': label, 'cardinality': len(values)}
+                    for label, values in label_values.items()
+                ]
+                
+                label_cardinality.sort(key=lambda x: x['cardinality'], reverse=True)
+                
+                # Display results
+                table = create_table(f"Label Cardinality for {metric}", ["Label", "Unique Values", "Impact"])
+                
+                for item in label_cardinality[:10]:
+                    impact = "HIGH" if item['cardinality'] > 100 else "MEDIUM" if item['cardinality'] > 10 else "LOW"
+                    impact_color = "red" if item['cardinality'] > 100 else "yellow" if item['cardinality'] > 10 else "green"
+                    
+                    table.add_row(
+                        item['label'],
+                        str(item['cardinality']),
+                        f"[{impact_color}]{impact}[/{impact_color}]"
+                    )
+                
+                console.print(table)
+                console.print(f"\n[dim]Total series: {len(result)}[/dim]")
+            else:
+                console.print(f"[red]Failed to query Prometheus: {response.status_code}[/red]")
+        except Exception as e:
+            console.print(f"[red]Error querying Prometheus: {e}[/red]")
