@@ -152,7 +152,7 @@ def setup():
                 except Exception as e:
                     # Fallback to local file
                     console.print(f"[yellow]⚠️  Keyring unavailable: {e}[/yellow]")
-                    console.print("[yellow]Falling back to local encrypted storage[/yellow]\n")
+                    console.print("[yellow]Falling back to plaintext file (chmod 600)[/yellow]\n")
                     
                     creds_file = Path.home() / ".stars" / "credentials"
                     creds_file.parent.mkdir(exist_ok=True, mode=0o700)
@@ -162,7 +162,7 @@ def setup():
                     
                     os.chmod(creds_file, 0o600)
                     print_success(f"API key saved to {creds_file} (chmod 600)")
-                    console.print("[yellow]⚠️  Warning: Using local file storage (no OS keychain detected)[/yellow]")
+                    console.print("[yellow]⚠️  Warning: Using plaintext file storage (no OS keychain detected)[/yellow]")
                     console.print("[yellow]    For production, use environment variable: export GEMINI_API_KEY='your-key'[/yellow]\n")
     
     # Check Kubernetes
@@ -446,6 +446,28 @@ def exec(
     container: str = typer.Option(None, "--container", "-c", help="Container name")
 ):
     """Execute command in a pod"""
+    from .sre_tools import validate_resource_name, validate_namespace
+    from rich.prompt import Confirm
+    
+    # Validate inputs
+    if not validate_resource_name(pod_name):
+        print_error(f"Invalid pod name: {pod_name}")
+        raise typer.Exit(1)
+    
+    if not validate_namespace(namespace):
+        print_error(f"Invalid namespace: {namespace}")
+        raise typer.Exit(1)
+    
+    # Confirm dangerous operation
+    console.print(f"[yellow]⚠️  About to execute command in pod:[/yellow]")
+    console.print(f"  Pod: {pod_name}")
+    console.print(f"  Namespace: {namespace}")
+    console.print(f"  Command: {command}")
+    
+    if not Confirm.ask("Continue?", default=False):
+        print_info("Cancelled")
+        raise typer.Exit(0)
+    
     try:
         cmd = MonitoringCommands()
         cmd.exec_pod(pod_name, command, namespace, container)
@@ -461,6 +483,23 @@ def port_forward(
     namespace: str = typer.Option("default", "--namespace", "-n", help="Kubernetes namespace")
 ):
     """Forward local port to pod"""
+    import re
+    from .sre_tools import validate_resource_name, validate_namespace
+    
+    # Validate port format
+    if not re.match(r'^\d{1,5}:\d{1,5}$', port):
+        print_error(f"Invalid port format: {port}. Expected format: local:remote (e.g., 8080:80)")
+        raise typer.Exit(1)
+    
+    # Validate inputs
+    if not validate_resource_name(pod_name):
+        print_error(f"Invalid pod name: {pod_name}")
+        raise typer.Exit(1)
+    
+    if not validate_namespace(namespace):
+        print_error(f"Invalid namespace: {namespace}")
+        raise typer.Exit(1)
+    
     try:
         cmd = MonitoringCommands()
         cmd.port_forward(pod_name, port, namespace)
@@ -564,20 +603,6 @@ def oom(namespace: str = typer.Option("default", "--namespace", "-n", help="Name
 
 
 @app.command()
-def rollback(
-    resource_type: str = typer.Argument(..., help="Resource type (deployment, statefulset)"),
-    resource_name: str = typer.Argument(..., help="Resource name"),
-    namespace: str = typer.Option("default", "--namespace", "-n", help="Namespace")
-):
-    """Rollback a deployment or statefulset"""
-    try:
-        cmd = MonitoringCommands()
-        cmd.rollback_resource(resource_type, resource_name, namespace)
-    except Exception as e:
-        print_error(f"Command failed: {e}")
-        raise typer.Exit(1)
-
-
 @app.command()
 def cordon(node_name: str = typer.Argument(..., help="Node name")):
     """Cordon a node (mark unschedulable)"""

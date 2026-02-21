@@ -147,12 +147,14 @@ class Config:
     
     def save(self):
         """Save configuration to file"""
+        import os
         data = {
             'thresholds': self.settings.thresholds.dict(),
             'interval': self.settings.interval,
         }
         with open(CONFIG_FILE, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
+        os.chmod(CONFIG_FILE, 0o600)
     
     def get(self, key: str, default=None):
         """Get configuration value by dot notation"""

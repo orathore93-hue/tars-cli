@@ -784,29 +784,45 @@ class MonitoringCommands:
             print_error(f"Failed to find OOM pods: {e}")
             raise
     
-    def rollback_resource(self, resource_type: str, resource_name: str, namespace: str):
-        """Rollback a resource"""
-        try:
-            self.k8s.rollback_resource(resource_type, resource_name, namespace)
-            print_success(f"Rolled back {resource_type}/{resource_name}")
-        except Exception as e:
-            print_error(f"Rollback failed: {e}")
-            raise
-    
+
     def cordon_node(self, node_name: str):
         """Cordon a node"""
+        from rich.prompt import Confirm
+        from .config import audit_log
+        
+        # Confirm operation
+        console.print(f"[yellow]⚠️  About to cordon node: {node_name}[/yellow]")
+        console.print("  This will mark the node as unschedulable")
+        
+        if not Confirm.ask("Continue?", default=False):
+            print_info("Cancelled")
+            return
+        
         try:
             self.k8s.cordon_node(node_name)
             print_success(f"Cordoned node {node_name}")
+            audit_log('cordon_node', node_name, 'cluster')
         except Exception as e:
             print_error(f"Failed to cordon: {e}")
             raise
     
     def uncordon_node(self, node_name: str):
         """Uncordon a node"""
+        from rich.prompt import Confirm
+        from .config import audit_log
+        
+        # Confirm operation
+        console.print(f"[yellow]⚠️  About to uncordon node: {node_name}[/yellow]")
+        console.print("  This will mark the node as schedulable")
+        
+        if not Confirm.ask("Continue?", default=False):
+            print_info("Cancelled")
+            return
+        
         try:
             self.k8s.uncordon_node(node_name)
             print_success(f"Uncordoned node {node_name}")
+            audit_log('uncordon_node', node_name, 'cluster')
         except Exception as e:
             print_error(f"Failed to uncordon: {e}")
             raise
@@ -1526,11 +1542,7 @@ class MonitoringCommands:
             print_success(f"Applied {len(results)} resource(s)")
             
             # Audit log
-            audit_log("apply", {
-                'file': file_path,
-                'namespace': namespace,
-                'resources': len(results)
-            })
+            audit_log("apply", f"file:{file_path}", namespace)
             
         except Exception as e:
             print_error(f"Failed to apply YAML: {e}")
@@ -1586,11 +1598,7 @@ class MonitoringCommands:
             print_success(f"Deleted {len(results)} resource(s)")
             
             # Audit log
-            audit_log("delete_from_yaml", {
-                'file': file_path,
-                'namespace': namespace,
-                'resources': len(results)
-            })
+            audit_log("delete_from_yaml", f"file:{file_path}", namespace)
             
         except Exception as e:
             print_error(f"Failed to delete from YAML: {e}")
