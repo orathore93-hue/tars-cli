@@ -35,11 +35,13 @@ class IncidentManager:
         # Save current incident
         with open(self.current_incident_file, 'w') as f:
             json.dump(incident, f, indent=2)
+        os.chmod(self.current_incident_file, 0o600)
         
         # Also save to incidents history
         incident_file = self.incidents_dir / f"{incident_id}.json"
         with open(incident_file, 'w') as f:
             json.dump(incident, f, indent=2)
+        os.chmod(incident_file, 0o600)
         
         console.print(f"\n[bold green]✓ Incident {incident_id} started[/bold green]")
         console.print(f"[yellow]Title:[/yellow] {title}")
@@ -73,10 +75,12 @@ class IncidentManager:
         # Save updated incident
         with open(self.current_incident_file, 'w') as f:
             json.dump(incident, f, indent=2)
+        os.chmod(self.current_incident_file, 0o600)
         
         incident_file = self.incidents_dir / f"{incident['id']}.json"
         with open(incident_file, 'w') as f:
             json.dump(incident, f, indent=2)
+        os.chmod(incident_file, 0o600)
         
         console.print(f"[green]✓[/green] Logged: {message}")
     
@@ -103,6 +107,7 @@ class IncidentManager:
         incident_file = self.incidents_dir / f"{incident['id']}.json"
         with open(incident_file, 'w') as f:
             json.dump(incident, f, indent=2)
+        os.chmod(incident_file, 0o600)
         
         # Remove current incident marker
         self.current_incident_file.unlink()

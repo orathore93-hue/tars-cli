@@ -556,9 +556,14 @@ class MonitoringCommands:
     
     def exec_pod(self, pod_name: str, command: str, namespace: str, container: str = None):
         """Execute command in pod"""
+        from .config import audit_log
+        
         try:
             output = self.k8s.exec_in_pod(pod_name, command, namespace, container)
             console.print(output)
+            
+            # Audit log
+            audit_log('exec_pod', f"{pod_name}:{command}", namespace)
         except Exception as e:
             print_error(f"Failed to execute command: {e}")
             raise

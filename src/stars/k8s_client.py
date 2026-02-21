@@ -141,14 +141,6 @@ class KubernetesClient:
             return False
     
     @retry_on_failure()
-    def get_pod_logs(self, name: str, namespace: str, tail: int = 50):
-        """Get pod logs"""
-        try:
-            return self.core_v1.read_namespaced_pod_log(name, namespace, tail_lines=tail)
-        except ApiException as e:
-            logger.error(f"Failed to get logs for {name}: {e}")
-            raise
-    
     @retry_on_failure()
     def list_events(self, namespace: str = "default"):
         """List events in namespace"""
@@ -160,14 +152,6 @@ class KubernetesClient:
             raise
     
     @retry_on_failure()
-    def list_deployments(self, namespace: str = "default"):
-        """List deployments"""
-        try:
-            return self.apps_v1.list_namespaced_deployment(namespace).items
-        except ApiException as e:
-            logger.error(f"Failed to list deployments: {e}")
-            raise
-    
     @retry_on_failure()
     def list_services(self, namespace: str = "default"):
         """List services"""
@@ -178,14 +162,6 @@ class KubernetesClient:
             raise
 
     @retry_on_failure()
-    def list_namespaces(self):
-        """List all namespaces"""
-        try:
-            return self.core_v1.list_namespace().items
-        except ApiException as e:
-            logger.error(f"Failed to list namespaces: {e}")
-            raise
-    
     @retry_on_failure()
     def list_configmaps(self, namespace: str = "default"):
         """List configmaps"""
@@ -309,16 +285,23 @@ class KubernetesClient:
     
     def exec_in_pod(self, pod_name: str, command: str, namespace: str, container: str = None):
         """Execute command in pod"""
+        import shlex
+        from kubernetes.stream import stream
+        
+        # Sanitize and split command
         try:
-            from kubernetes.stream import stream
-            exec_command = ['/bin/sh', '-c', command]
-            
+            # Split command properly, avoiding shell injection
+            command_list = shlex.split(command)
+        except ValueError as e:
+            raise ValueError(f"Invalid command syntax: {e}")
+        
+        try:
             resp = stream(
                 self.core_v1.connect_get_namespaced_pod_exec,
                 pod_name,
                 namespace,
                 container=container,
-                command=exec_command,
+                command=command_list,
                 stderr=True,
                 stdin=False,
                 stdout=True,
@@ -385,13 +368,18 @@ class KubernetesClient:
             raise
 
     def rollback_resource(self, resource_type: str, name: str, namespace: str):
-        """Rollback a resource"""
+        """Rollback a resource using kubectl"""
+        import subprocess
+        
         try:
-            if resource_type == "deployment":
-                self.apps_v1.rollback_namespaced_deployment(name, namespace, {})
-            else:
-                raise ValueError(f"Rollback not supported for {resource_type}")
-        except ApiException as e:
+            # Use kubectl rollout undo (API method doesn't exist)
+            cmd = ["kubectl", "rollout", "undo", resource_type, name, "-n", namespace]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            logger.info(f"Rolled back {resource_type}/{name}: {result.stdout}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to rollback: {e.stderr}")
+            raise RuntimeError(f"Rollback failed: {e.stderr}")
+        except Exception as e:
             logger.error(f"Failed to rollback: {e}")
             raise
     
