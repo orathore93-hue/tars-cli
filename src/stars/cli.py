@@ -603,7 +603,6 @@ def oom(namespace: str = typer.Option("default", "--namespace", "-n", help="Name
 
 
 @app.command()
-@app.command()
 def cordon(node_name: str = typer.Argument(..., help="Node name")):
     """Cordon a node (mark unschedulable)"""
     try:
