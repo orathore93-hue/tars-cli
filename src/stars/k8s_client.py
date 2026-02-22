@@ -141,7 +141,6 @@ class KubernetesClient:
             return False
     
     @retry_on_failure()
-    @retry_on_failure()
     def list_events(self, namespace: str = "default"):
         """List events in namespace"""
         try:
@@ -152,7 +151,6 @@ class KubernetesClient:
             raise
     
     @retry_on_failure()
-    @retry_on_failure()
     def list_services(self, namespace: str = "default"):
         """List services"""
         try:
@@ -161,7 +159,6 @@ class KubernetesClient:
             logger.error(f"Failed to list services: {e}")
             raise
 
-    @retry_on_failure()
     @retry_on_failure()
     def list_configmaps(self, namespace: str = "default"):
         """List configmaps"""
