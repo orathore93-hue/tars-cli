@@ -56,7 +56,7 @@ jobs:
 
       # Setup Python 3.10 (pinned to commit SHA)
       - name: Set up Python 3.10
-        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d  # v5
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c  # v5
         with:
           python-version: '3.10'
 
