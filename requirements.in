@@ -1,10 +1,10 @@
-typer>=0.9.0
+typer>=0.25.1
 rich>=13.0.0
 kubernetes>=28.0.0
 google-genai>=0.2.0
-prometheus-api-client>=0.5.0
+prometheus-api-client>=0.7.2
 pyyaml>=6.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-python-dotenv>=1.0.0
+pydantic>=2.13.4
+pydantic-settings>=2.14.1
+python-dotenv>=1.2.2
 keyring>=24.0.0
